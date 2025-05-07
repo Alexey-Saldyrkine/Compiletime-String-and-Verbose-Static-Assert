@@ -2,47 +2,63 @@
 #include <iostream>
 
 
+namespace example{
+    using namespace std;
+    using namespace compStringNS;
+
+    struct baseErrorMsg{
+        using name = decltype("[No name given]"_compStr);
+        using error1detail = decltype("[No msg given]"_compStr);
+    };
+
+    struct A:baseErrorMsg{
+        using name = decltype("A"_compStr);
+        using error1detail = decltype("X"_compStr);
+    };
+    struct B:baseErrorMsg{
+        using name = decltype("B"_compStr);
+        using error1detail = decltype("Y"_compStr);
+    };
+    struct C:baseErrorMsg{
+
+    };
+
+    template<typename T>
+    struct derived:T{
+        
+        using error1msg = typename 
+        decltype("Error1, occurred in base \'"_compStr)
+        ::append<typename T::name>
+        ::template append<decltype("\', because: "_compStr)>
+        ::append<typename T::error1detail>;
+
+
+        void printName(){
+            using msg = decltype("Type is derived from "_compStr)::append<typename T::name>;
+            cout<<msg::sv<<endl;
+        }
+        
+        void printError1(){
+            
+            cout<<error1msg::sv<<endl;
+        }
+    };
+}
 
 
 int main() {
-    using namespace std;
-    using namespace compStringNS;
-    using str = decltype("hello world"_compStr);
-    using our = decltype("our "_compStr);
-    using my = decltype("my "_compStr);
-    using l = decltype("l"_compStr);
-    using ourworld = str::insert<5,our>;
-    cout<<str::substr<0,4>::sv<<endl;
+    using namespace example;
 
-     cout<<str::sv<<endl;
-     cout<<ourworld::sv<<endl;
-     cout<<ourworld::erase<4,4>::sv<<endl;
-     cout<<ourworld::erase<4,999>::sv<<endl;
-     cout<<str::push_back<'s'>::sv<<endl;
-     cout<<str::push_back<'s'>::pop_back::sv<<endl;
-     cout<<ourworld::replace<5,4,my>::sv<<endl;
-     using myworld = ourworld::replace<5,4,my>;
-     cout<<ourworld::find<l><<endl;
-     cout<<ourworld::rfind<decltype("l"_compStr)><<endl;
-     cout<< myworld::find_first_of<decltype("ym"_compStr)> << endl;
-     cout<< myworld::find_last_of<decltype("my"_compStr)> << endl;
-     cout<< myworld::find_first_not_of<decltype("hl eo"_compStr)> << endl;
-     cout<< myworld::find_last_not_of<decltype("dlw or"_compStr)> << endl;
-     using strA = decltype("abc"_compStr);
-     cout<< strA::compare<decltype("abc"_compStr)> <<endl;
+    derived<A> a;
+    derived<B> b;
 
-     using predB= decltype( [](size_t i, char c)->bool{
-        return c=='l' && i%2;
-     });
+    a.printName();
+    b.printName();
+    //a.printError1();
+    b.printError1();
+   static_assert(0,derived<A>::error1msg::sv);
+   static_assert(0,derived<B>::error1msg::sv);
+   static_assert(0,derived<C>::error1msg::sv);
 
-     cout<< str::erase_if<predB>::sv <<endl;
-
-     using replaceFunc = decltype([](char c, size_t i)->char{
-                if(i%2==0 || c ==' ')
-                    return c;
-                else
-                    return'Y';
-            });
-    cout<<str::replace_if<replaceFunc>::sv<<endl;
-    
+    return 0;
 }
