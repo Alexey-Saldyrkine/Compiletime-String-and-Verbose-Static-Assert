@@ -1,5 +1,4 @@
 #include "compileTime String.hpp"
-
 namespace {
 using namespace std::literals;
 using namespace compStringNS;
@@ -46,6 +45,17 @@ struct TESTS{
     static_assert(strA::compare<decltype("abc"_compStr),0,2,0,1> == 1);
     static_assert(strA::compare<decltype("aac"_compStr),0,2,0,2> == 1);
     static_assert(strA::compare<decltype("abc"_compStr),-1ull,0,-1ull,0> == 0);
+    //other compares
+    static_assert(decltype("hello"_compStr)::equal<decltype("hello"_compStr)> == 1);
+    static_assert(decltype("hello"_compStr)::equal<decltype("hello "_compStr)> == 0);
+    static_assert(decltype("hello"_compStr)::lesser<decltype("zzz"_compStr)> == 0);
+    static_assert(decltype("hello"_compStr)::lesserEq<decltype("zzz"_compStr)> == 0);
+    static_assert(decltype("hello"_compStr)::lesser<decltype("aaaaaa"_compStr)> == 1);
+    static_assert(decltype("hello"_compStr)::greater<decltype("zzzzzz"_compStr)> == 0);
+    static_assert(decltype("hello"_compStr)::greaterEq<decltype("zzzzzz"_compStr)> == 0);
+    static_assert(decltype("hello"_compStr)::greater<decltype("aaa"_compStr)> == 1);
+    static_assert(decltype("hello"_compStr)::greaterEq<decltype("hello"_compStr)> == 1);
+    static_assert(decltype("hello"_compStr)::lesserEq<decltype("hello"_compStr)> == 1);
     //starts_with & ends_with
     static_assert(strA::starts_with<decltype("a"_compStr)> == 1);
     static_assert(strA::starts_with<decltype("ab"_compStr)> == 1);

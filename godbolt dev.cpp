@@ -118,11 +118,11 @@ struct findImpl{
 
 template<size_t i, typename str, int dif, bool invert, char... c>
 struct findFirstOfImpl{
+   
     static constexpr size_t f(){
         if constexpr(i >= str::size){
-            return -1;
-        }
-        if constexpr((!invert)&&(((str::template at<i>)==c)||...) || invert&&!(((str::template at<i>)==c)||...)){
+            return -1ull;
+        }else if constexpr (!invert&&(((str::template at<i>)==c)||...) || invert&&(!(((str::template at<i>)==c)||...))){
             return i;
         }else{
             return findFirstOfImpl<i+dif,str,dif,invert,c...>::value;
@@ -139,41 +139,19 @@ struct findFirstOfInter<i,str,compString<tstring<c...>>,dif,invert>{
     static constexpr size_t value = findFirstOfImpl<i,str,dif,invert,c...>::value;
 };
 
-template<size_t i, typename A, typename B>
-struct compareCompStringImpl{
-    static constexpr int f(){
-        if(A::template at<i> == B::template at<i>){
-            if constexpr (i >= A::size){
-                return 0;
-            }else{
-                return compareCompStringImpl<i+1,A,B>::value;
-            }
-        }
-        if(A::template at<i> > B::template at<i>){
-            return 1;
-        }else{
-            return -1;
-        }
-    }
-    static constexpr int value = f();
-};
-
 template<typename A, typename B, size_t pos1 = -1, size_t count1 =(A::size - pos1), size_t pos2=-1, size_t count2 =(B::size - pos2)>
 struct compareCompString{
     static constexpr int f(){
        using strA = A::template substr<(pos1 == -1 ? 0 : pos1),(pos1 == -1 ? A::size : pos1 + count1)>;
        using strB = B::template substr<(pos2 == -1 ? 0 : pos2),(pos2 == -1 ? B::size : pos2 + count2)>;
-
-       if constexpr (strA::size == strB::size){
-            return compareCompStringImpl<0,strA,strB>::value;
+       if(strA::sv == strB::sv){
+            return 0;
        }
-
-       if constexpr (strA::size > strB::size){
+       if(strA::sv > strB::sv){
             return 1;
        }else{
             return -1;
        }
-
     }
     static constexpr int value = f();
 };
@@ -321,9 +299,9 @@ struct compString<detail::tstring<c...>> {
     static constexpr size_t find_first_of = findFirstOfInter<pos,thisStr,str,1,0>::value;
     template<typename str, size_t pos =0>
     static constexpr size_t find_first_not_of = findFirstOfInter<pos,thisStr,str,1,1>::value;
-    template<typename str, size_t pos = size - str::size>
+    template<typename str, size_t pos = size-1>
     static constexpr size_t find_last_of = findFirstOfInter<pos,thisStr,str,-1,0>::value;
-    template<typename str, size_t pos = size - str::size>
+    template<typename str, size_t pos = size-1>
     static constexpr size_t find_last_not_of = findFirstOfInter<pos,thisStr,str,-1,1>::value;
     //Operations
     template<size_t pos, size_t count>
@@ -339,6 +317,14 @@ struct compString<detail::tstring<c...>> {
     //other
     template<typename str>
     static constexpr bool equal = (sv == str::sv);
+    template<typename str>
+    static constexpr bool lesser = (size == str::size ?(sv < str::sv):size < str::size);
+    template<typename str>
+    static constexpr bool greater = (size == str::size ?(sv > str::sv):size > str::size);
+    template<typename str>
+    static constexpr bool lesserEq = equal<str> || lesser<str>;
+    template<typename str>
+    static constexpr bool greaterEq = equal<str> || greater<str>;
 
     template<typename pred>
     using erase_if = typename erase_ifImpl<0,thisStr,pred>::type;
@@ -350,10 +336,6 @@ struct compString<detail::tstring<c...>> {
 template <typename T, T... chars>
 constexpr compString<detail::tstring<chars...>> operator""_compStr() {
   return {};
-}
-
-constexpr auto toCompString(std::string_view s){
-    return detail::toCompStringImpl<0,decltype(""_compStr)>(s);
 }
 
 }
@@ -404,6 +386,17 @@ struct TESTS{
     static_assert(strA::compare<decltype("abc"_compStr),0,2,0,1> == 1);
     static_assert(strA::compare<decltype("aac"_compStr),0,2,0,2> == 1);
     static_assert(strA::compare<decltype("abc"_compStr),-1ull,0,-1ull,0> == 0);
+    //other compares
+    static_assert(decltype("hello"_compStr)::equal<decltype("hello"_compStr)> == 1);
+    static_assert(decltype("hello"_compStr)::equal<decltype("hello "_compStr)> == 0);
+    static_assert(decltype("hello"_compStr)::lesser<decltype("zzz"_compStr)> == 0);
+    static_assert(decltype("hello"_compStr)::lesserEq<decltype("zzz"_compStr)> == 0);
+    static_assert(decltype("hello"_compStr)::lesser<decltype("aaaaaa"_compStr)> == 1);
+    static_assert(decltype("hello"_compStr)::greater<decltype("zzzzzz"_compStr)> == 0);
+    static_assert(decltype("hello"_compStr)::greaterEq<decltype("zzzzzz"_compStr)> == 0);
+    static_assert(decltype("hello"_compStr)::greater<decltype("aaa"_compStr)> == 1);
+    static_assert(decltype("hello"_compStr)::greaterEq<decltype("hello"_compStr)> == 1);
+    static_assert(decltype("hello"_compStr)::lesserEq<decltype("hello"_compStr)> == 1);
     //starts_with & ends_with
     static_assert(strA::starts_with<decltype("a"_compStr)> == 1);
     static_assert(strA::starts_with<decltype("ab"_compStr)> == 1);
@@ -472,44 +465,12 @@ struct TESTS{
 int main() {
     using namespace std;
     using namespace compStringNS;
-    using str = decltype("hello world"_compStr);
-    using our = decltype("our "_compStr);
-    using my = decltype("my "_compStr);
-    using l = decltype("l"_compStr);
-    using ourworld = str::insert<5,our>;
-    cout<<str::substr<0,4>::sv<<endl;
-
-     cout<<str::sv<<endl;
-     cout<<ourworld::sv<<endl;
-     cout<<ourworld::erase<4,4>::sv<<endl;
-     cout<<ourworld::erase<4,999>::sv<<endl;
-     cout<<str::push_back<'s'>::sv<<endl;
-     cout<<str::push_back<'s'>::pop_back::sv<<endl;
-     cout<<ourworld::replace<5,4,my>::sv<<endl;
-     using myworld = ourworld::replace<5,4,my>;
-     cout<<ourworld::find<l><<endl;
-     cout<<ourworld::rfind<decltype("l"_compStr)><<endl;
-     cout<< myworld::find_first_of<decltype("ym"_compStr)> << endl;
-     cout<< myworld::find_last_of<decltype("my"_compStr)> << endl;
-     cout<< myworld::find_first_not_of<decltype("hl eo"_compStr)> << endl;
-     cout<< myworld::find_last_not_of<decltype("dlw or"_compStr)> << endl;
-     using strA = decltype("abc"_compStr);
-     cout<< strA::compare<decltype("abc"_compStr)> <<endl;
-
-     using predB= decltype( [](size_t i, char c)->bool{
-        return c=='l' && i%2;
-     });
-
-     cout<< str::erase_if<predB>::sv <<endl;
-
-     using replaceFunc = decltype([](char c, size_t i)->char{
-                if(i%2==0 || c ==' ')
-                    return c;
-                else
-                    return'Y';
-            });
-    cout<<str::replace_if<replaceFunc>::sv<<endl;
-
-    constexpr std::string_view normalStrin("string to constexpr");
     
+    constexpr int i = decltype("hello my world"_compStr)::compare<decltype("hello our world"_compStr)>;
+    cout<<i<<endl;
+
+    using retStr = decltype("hello my world"_compStr)::substrLR<3,8>; 
+    cout<<retStr::sv<<endl;
+
+
 }

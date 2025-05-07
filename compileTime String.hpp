@@ -1,5 +1,4 @@
 #include <string_view>
-#include <iostream>
 #include <type_traits>
 
 
@@ -118,11 +117,11 @@ struct findImpl{
 
 template<size_t i, typename str, int dif, bool invert, char... c>
 struct findFirstOfImpl{
+   
     static constexpr size_t f(){
         if constexpr(i >= str::size){
-            return -1;
-        }
-        if constexpr((!invert)&&(((str::template at<i>)==c)||...) || invert&&!(((str::template at<i>)==c)||...)){
+            return -1ull;
+        }else if constexpr (!invert&&(((str::template at<i>)==c)||...) || invert&&(!(((str::template at<i>)==c)||...))){
             return i;
         }else{
             return findFirstOfImpl<i+dif,str,dif,invert,c...>::value;
@@ -139,41 +138,19 @@ struct findFirstOfInter<i,str,compString<tstring<c...>>,dif,invert>{
     static constexpr size_t value = findFirstOfImpl<i,str,dif,invert,c...>::value;
 };
 
-template<size_t i, typename A, typename B>
-struct compareCompStringImpl{
-    static constexpr int f(){
-        if(A::template at<i> == B::template at<i>){
-            if constexpr (i >= A::size){
-                return 0;
-            }else{
-                return compareCompStringImpl<i+1,A,B>::value;
-            }
-        }
-        if(A::template at<i> > B::template at<i>){
-            return 1;
-        }else{
-            return -1;
-        }
-    }
-    static constexpr int value = f();
-};
-
 template<typename A, typename B, size_t pos1 = -1, size_t count1 =(A::size - pos1), size_t pos2=-1, size_t count2 =(B::size - pos2)>
 struct compareCompString{
     static constexpr int f(){
        using strA = A::template substr<(pos1 == -1 ? 0 : pos1),(pos1 == -1 ? A::size : pos1 + count1)>;
        using strB = B::template substr<(pos2 == -1 ? 0 : pos2),(pos2 == -1 ? B::size : pos2 + count2)>;
-
-       if constexpr (strA::size == strB::size){
-            return compareCompStringImpl<0,strA,strB>::value;
+       if(strA::sv == strB::sv){
+            return 0;
        }
-
-       if constexpr (strA::size > strB::size){
+       if(strA::sv > strB::sv){
             return 1;
        }else{
             return -1;
        }
-
     }
     static constexpr int value = f();
 };
@@ -321,9 +298,9 @@ struct compString<detail::tstring<c...>> {
     static constexpr size_t find_first_of = findFirstOfInter<pos,thisStr,str,1,0>::value;
     template<typename str, size_t pos =0>
     static constexpr size_t find_first_not_of = findFirstOfInter<pos,thisStr,str,1,1>::value;
-    template<typename str, size_t pos = size - str::size>
+    template<typename str, size_t pos = size-1>
     static constexpr size_t find_last_of = findFirstOfInter<pos,thisStr,str,-1,0>::value;
-    template<typename str, size_t pos = size - str::size>
+    template<typename str, size_t pos = size-1>
     static constexpr size_t find_last_not_of = findFirstOfInter<pos,thisStr,str,-1,1>::value;
     //Operations
     template<size_t pos, size_t count>
@@ -339,6 +316,14 @@ struct compString<detail::tstring<c...>> {
     //other
     template<typename str>
     static constexpr bool equal = (sv == str::sv);
+    template<typename str>
+    static constexpr bool lesser = (size == str::size ?(sv < str::sv):size < str::size);
+    template<typename str>
+    static constexpr bool greater = (size == str::size ?(sv > str::sv):size > str::size);
+    template<typename str>
+    static constexpr bool lesserEq = equal<str> || lesser<str>;
+    template<typename str>
+    static constexpr bool greaterEq = equal<str> || greater<str>;
 
     template<typename pred>
     using erase_if = typename erase_ifImpl<0,thisStr,pred>::type;
@@ -350,10 +335,6 @@ struct compString<detail::tstring<c...>> {
 template <typename T, T... chars>
 constexpr compString<detail::tstring<chars...>> operator""_compStr() {
   return {};
-}
-
-constexpr auto toCompString(std::string_view s){
-    return detail::toCompStringImpl<0,decltype(""_compStr)>(s);
 }
 
 }
