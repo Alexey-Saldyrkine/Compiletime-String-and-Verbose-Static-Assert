@@ -142,8 +142,8 @@ struct findFirstOfInter<i,str,compString<tstring<c...>>,dif,invert>{
 template<typename A, typename B, size_t pos1 = -1, size_t count1 =(A::size - pos1), size_t pos2=-1, size_t count2 =(B::size - pos2)>
 struct compareCompString{
     static constexpr int f(){
-       using strA = A::template substr<(pos1 == -1 ? 0 : pos1),(pos1 == -1 ? A::size : pos1 + count1)>;
-       using strB = B::template substr<(pos2 == -1 ? 0 : pos2),(pos2 == -1 ? B::size : pos2 + count2)>;
+       using strA = typename A::template substr<(pos1 == -1 ? 0 : pos1),(pos1 == -1 ? A::size : pos1 + count1)>;
+       using strB = typename B::template substr<(pos2 == -1 ? 0 : pos2),(pos2 == -1 ? B::size : pos2 + count2)>;
        if(strA::sv == strB::sv){
             return 0;
        }
@@ -256,6 +256,9 @@ constexpr auto toCompStringImpl(std::string_view s){
 using detail::compString;
 template <char... c>
 struct compString<detail::tstring<c...>> {
+
+  
+
   using thisStr = compString<detail::tstring<c...>>;
   static constexpr char str[sizeof...(c) + 1] = {c..., '\0'};
   static constexpr size_t size = sizeof...(c);
@@ -331,6 +334,13 @@ struct compString<detail::tstring<c...>> {
     template<typename replaceFunc>
     using replace_if = typename replace_ifImpl<0,thisStr,replaceFunc>::type;
 
+    static constexpr size_t sizeInterm = size;
+    struct out{
+        const char * data = str;
+        size_t size = sizeInterm;
+    };
+
+    static constexpr out outobj = out{};
 };
 
 template <typename T, T... chars>
@@ -462,15 +472,88 @@ struct TESTS{
 };
 }
 
-int main() {
+
+
+namespace example{
     using namespace std;
     using namespace compStringNS;
+
+    struct baseErrorMsg{
+        using name = decltype("[No name given]"_compStr);
+        using error1detail = decltype("[No msg given]"_compStr);
+    };
+
+    struct A:baseErrorMsg{
+        using name = decltype("A"_compStr);
+        using error1detail = decltype("X"_compStr);
+    };
+    struct B:baseErrorMsg{
+        using name = decltype("B"_compStr);
+        using error1detail = decltype("Y"_compStr);
+    };
+    struct C:baseErrorMsg{
+
+    };
+
+    template<typename T>
+    struct derived:T{
+        
+        using error1msg = typename 
+        decltype("Error1, occurred in base \'"_compStr)
+        ::append<typename T::name>
+        ::template append<decltype("\', because: "_compStr)>
+        ::append<typename T::error1detail>;
+
+
+        void printName(){
+            using msg = decltype("Type is derived from "_compStr)::append<typename T::name>;
+            cout<<msg::sv<<endl;
+        }
+        
+        void printError1(){
+            
+            cout<<error1msg::sv<<endl;
+        }
+    };
+}
+
+template<template<typename...> typename Caller>
+struct templateNames{
+    using name = decltype("undefiend name"_compStr);
+    static_assert(0);
+};
+
+template<>
+struct templateNames<std::is_same>{
+    using name = decltype("std::is_same"_compStr);
+};
+
+template<typename T>
+struct get_name;
+
+template<template<typename...> typename caller,typename...T>
+struct get_name<caller<T...>>{
+    using name = typename templateNames<caller>::name;
+};
+template<typename T>
+struct verbose_static_assert{
     
-    constexpr int i = decltype("hello my world"_compStr)::compare<decltype("hello our world"_compStr)>;
-    cout<<i<<endl;
-
-    using retStr = decltype("hello my world"_compStr)::substrLR<3,8>; 
-    cout<<retStr::sv<<endl;
+};
 
 
+int main() {
+    using namespace example;
+
+    derived<A> a;
+    derived<B> b;
+
+    a.printName();
+    b.printName();
+    //a.printError1();
+    b.printError1();
+   //static_assert(0,derived<A>::error1msg::sv);
+   //static_assert(0,derived<B>::error1msg::sv);
+   //static_assert(0,derived<C>::error1msg::sv);
+
+    return 0;
 }
