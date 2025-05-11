@@ -2,6 +2,8 @@
 #include <iostream>
 #include <type_traits>
 
+#include <charconv>
+
 
 
 namespace compStringNS{
@@ -64,7 +66,7 @@ struct findCharIndexImpl<index, target, std::integer_sequence<char, c>> {
 };
 
 template <typename>
-struct compString;
+struct compString{};
 
 template<typename,typename>
 struct appendStringImpl;
@@ -250,7 +252,34 @@ constexpr auto toCompStringImpl(std::string_view s){
         return typename appendStringImpl<tstring<s[i]>,decltype(toCompStringImpl<i+1,emptystr>(s)) >::type{};
     }
 }
+template<typename T>
+struct typeWrapper{
+    using type = T;
+};
 
+template<typename str,size_t i>
+struct compStringReverseImpl{
+    static constexpr auto f(){
+        if constexpr(str::size == 0){
+            return typeWrapper<str>{};
+        }else
+        if constexpr(i < str::size-1){
+            using t = typename compStringReverseImpl<str,i+1>::type::type;
+            using retType = typename t::push_back<str::template at<i>>;
+            return typeWrapper<retType>{};
+        }else{
+            using retType = compString<detail::tstring< str::template at<str::size-1> > >;
+            return typeWrapper<retType>{};
+        }
+    }
+    using type = decltype(f());
+};
+
+template<typename str>
+struct compStringReverse{
+    using inter = typename compStringReverseImpl<str,0>::type;
+    using type  = typename inter::type;
+};
 
 }
 using detail::compString;
@@ -277,6 +306,7 @@ struct compString<detail::tstring<c...>> {
     static constexpr const char* c_str = str;
     static constexpr char front = at<0>;
     static constexpr char back = at<size-1>;
+
     static constexpr const char* data = c_str;
     static constexpr const auto to_basic_string_view = std::basic_string_view(str,size);
     static constexpr const auto sv = to_basic_string_view;
@@ -328,7 +358,6 @@ struct compString<detail::tstring<c...>> {
     static constexpr bool lesserEq = equal<str> || lesser<str>;
     template<typename str>
     static constexpr bool greaterEq = equal<str> || greater<str>;
-
     template<typename pred>
     using erase_if = typename erase_ifImpl<0,thisStr,pred>::type;
     template<typename replaceFunc>
@@ -349,6 +378,175 @@ constexpr compString<detail::tstring<chars...>> operator""_compStr() {
 }
 
 }
+
+namespace compStringNS{
+namespace compStringConvNS{
+template<typename T>
+struct typeToCompString{
+    using type = decltype("[no name given]"_compStr);
+};
+
+template<>
+struct typeToCompString<int>{
+    using type = decltype("int"_compStr);
+};
+
+#define createTypeNameDefinition(x) template<> struct typeToCompString<x>{ using type = decltype(#x ""_compStr);};
+
+createTypeNameDefinition(char);
+
+
+
+template<typename T, auto val>
+struct valueToCompStringInter{
+    using type = decltype("[no name given]"_compStr);
+};
+
+
+
+template<typename T, T val,typename str>
+struct integerValToCompString{
+    static constexpr auto f(){
+        if constexpr(val >=10){
+        constexpr T i = val%10;
+        using t = str::template push_back<'0'+i>;
+        return typename integerValToCompString<T,val/10,t>::type{};
+        }else{
+             using t = str::template push_back<static_cast<char>('0'+val)>;
+             return t{};
+        }
+    }
+    using inter = decltype(f());
+    using type = typename detail::compStringReverse<inter>::type;
+};
+
+template<auto val>
+struct integerValToCompStringInterm{
+    using T = decltype(val);
+    static constexpr auto f(){
+        if constexpr(val >0){
+            using t = typename integerValToCompString<T,val,decltype(""_compStr)>::type;
+            return t{};
+        }else{
+            using t = typename integerValToCompString<T,-val,decltype(""_compStr)>::type;
+            return typename t::template prepend<decltype("-"_compStr)>{};
+        }
+    }
+    
+    
+    using type = decltype(f());
+};
+
+
+template<auto val>
+struct valueToCompString{
+    static constexpr auto f(){
+        using T = decltype(val);
+        if constexpr(std::is_integral_v<T>){
+            return typename integerValToCompStringInterm<val>::type{};
+        }else{
+            return typename valueToCompStringInter<decltype(val),val>::type{};
+        }
+    }
+    using type = decltype(f());   
+};
+
+
+
+template<typename T,size_t i, size_t size,const char* buf>
+struct charArrayToType{
+    static constexpr auto f(){
+        if constexpr(i<size){
+            using t = typename T::template push_back<*(buf+i)>;
+            return typename charArrayToType<t,i+1,size,buf>::type{};
+        }else{
+            return T{};
+        }
+    }
+
+    using type = decltype(f());
+};
+
+template<const char* buf>
+constexpr size_t getCstrLength(){
+    size_t ret=0;
+    while(*(buf+ret) != '\0') ret++;
+    return ret;
+}
+
+template<const char* buf >
+struct valueToCompStringInter<const char*,buf>{
+    using type = charArrayToType<decltype(""_compStr),0,getCstrLength<buf>(),buf>::type;
+};
+
+
+
+
+template<template<typename...> typename Caller>
+struct templateNames{
+    using name = decltype("undefiend name"_compStr);
+    //static_assert(0);
+};
+
+#define createTemplateNameDefinition(x) template<> struct templateNames<x>{ using name = decltype(#x ""_compStr);};
+
+
+template<>
+struct templateNames<std::is_same>{
+    using name = decltype("std::is_same"_compStr);
+};
+
+createTemplateNameDefinition(std::is_base_of);
+
+
+
+template<typename T>
+struct get_name{
+    using name = typename typeToCompString<T>::type;
+};
+
+
+template<size_t i,size_t target,typename T,typename... Ts>
+struct mp_list_at_impl{
+    static constexpr auto f(){
+        if constexpr(i == target){
+            return T{};
+        }else{
+            return typename mp_list_at_impl<i+1,target,Ts...>::type{};
+        }
+    }
+    using type = decltype(f());
+};
+
+template<size_t i,size_t target,typename... Ts>
+struct mp_list_at_intern{
+
+    //static_assert(i< sizeof...(Ts),)
+};
+
+template<typename... T>
+struct mp_list{
+    //template<size_t i>
+
+};
+
+template<template<typename...> typename caller,typename...T>
+struct get_name<caller<T...>>{
+    using name = typename templateNames<caller>::name;
+    static constexpr size_t argCount = sizeof...(T);
+
+};
+
+
+
+}
+}
+
+
+
+
+
+
 
 namespace {
 using namespace std::literals;
@@ -474,86 +672,44 @@ struct TESTS{
 
 
 
-namespace example{
-    using namespace std;
-    using namespace compStringNS;
-
-    struct baseErrorMsg{
-        using name = decltype("[No name given]"_compStr);
-        using error1detail = decltype("[No msg given]"_compStr);
-    };
-
-    struct A:baseErrorMsg{
-        using name = decltype("A"_compStr);
-        using error1detail = decltype("X"_compStr);
-    };
-    struct B:baseErrorMsg{
-        using name = decltype("B"_compStr);
-        using error1detail = decltype("Y"_compStr);
-    };
-    struct C:baseErrorMsg{
-
-    };
-
-    template<typename T>
-    struct derived:T{
-        
-        using error1msg = typename 
-        decltype("Error1, occurred in base \'"_compStr)
-        ::append<typename T::name>
-        ::template append<decltype("\', because: "_compStr)>
-        ::append<typename T::error1detail>;
-
-
-        void printName(){
-            using msg = decltype("Type is derived from "_compStr)::append<typename T::name>;
-            cout<<msg::sv<<endl;
-        }
-        
-        void printError1(){
-            
-            cout<<error1msg::sv<<endl;
-        }
-    };
-}
-
-template<template<typename...> typename Caller>
-struct templateNames{
-    using name = decltype("undefiend name"_compStr);
-    static_assert(0);
-};
-
-template<>
-struct templateNames<std::is_same>{
-    using name = decltype("std::is_same"_compStr);
-};
-
-template<typename T>
-struct get_name;
-
-template<template<typename...> typename caller,typename...T>
-struct get_name<caller<T...>>{
-    using name = typename templateNames<caller>::name;
-};
+namespace verbose_static_assertNS{
+using namespace compStringNS;
+using namespace compStringNS::compStringConvNS;
 template<typename T>
 struct verbose_static_assert{
-    
+    static constexpr const char* nameOfType = get_name<T>::name::str;
+    static constexpr auto value = T::value;
+
+    //static_assert(value,get_name<T>::name::sv);
+
+    static void f(){
+        std::cout<<"name: "<<nameOfType<<std::endl;
+        std::cout<<"value: "<<value<<std::endl;
+    }
 };
+}
 
 
+
+
+constexpr const char cstr1[]="hello";
+constexpr const char cstr2[]="this is a cstr";
 int main() {
-    using namespace example;
+    using namespace std;
+    using namespace compStringNS;
+    using namespace compStringNS::compStringConvNS;
+    
+    cout<<typeToCompString<int>::type::sv<<"$"<<endl;
+    cout<<valueToCompString<234>::type::sv<<"$"<<endl;
+    cout<<valueToCompString<cstr1>::type::sv<<"$"<<endl;
+    cout<<valueToCompString<cstr2>::type::sv<<"$"<<endl;
 
-    derived<A> a;
-    derived<B> b;
 
-    a.printName();
-    b.printName();
-    //a.printError1();
-    b.printError1();
-   //static_assert(0,derived<A>::error1msg::sv);
-   //static_assert(0,derived<B>::error1msg::sv);
-   //static_assert(0,derived<C>::error1msg::sv);
+    cout<<endl;
+    cout<<endl;
+    using namespace verbose_static_assertNS;
+   verbose_static_assert<std::is_same<int,char>>::f();
+   verbose_static_assert<std::is_base_of<int,char>>::f();
 
     return 0;
 }
