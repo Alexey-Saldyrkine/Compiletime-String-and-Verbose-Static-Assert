@@ -383,7 +383,7 @@ namespace compStringNS{
 namespace compStringConvNS{
 template<typename T>
 struct typeToCompString{
-    using type = decltype("[no name given]"_compStr);
+    using type = decltype("[no name given to type]"_compStr);
 };
 
 template<>
@@ -394,12 +394,19 @@ struct typeToCompString<int>{
 #define createTypeNameDefinition(x) template<> struct typeToCompString<x>{ using type = decltype(#x ""_compStr);};
 
 createTypeNameDefinition(char);
+createTypeNameDefinition(unsigned int);
+createTypeNameDefinition(long int);
+createTypeNameDefinition(unsigned long int);
+createTypeNameDefinition(long long int);
+createTypeNameDefinition(unsigned long long int);
+createTypeNameDefinition(float);
+createTypeNameDefinition(double);
 
 
 
 template<typename T, auto val>
 struct valueToCompStringInter{
-    using type = decltype("[no name given]"_compStr);
+    using type = decltype("[no name given to value]"_compStr);
 };
 
 
@@ -500,15 +507,44 @@ createTemplateNameDefinition(std::is_base_of);
 
 
 
-template<typename T>
-struct get_name{
-    using name = typename typeToCompString<T>::type;
-};
 
+
+
+
+
+// template<typename... T>
+// struct mp_list{
+//     template<size_t i>
+//     using at =typename mp_list_at_impl<0,i,T...>::type;
+// };
+
+// template<typename T>
+// struct get_name{
+//     using name = typename typeToCompString<T>::type;
+// };
+
+// template<template<typename...> typename caller,typename...T>
+// struct get_name<caller<T...>>{
+//     using name = typename templateNames<caller>::name;
+//     static constexpr size_t argCount = sizeof...(T);
+//     using argList = mp_list<T...>;
+// };
+
+
+
+}
+}
+
+namespace verbose_static_assertNS{
+using namespace compStringNS;
+using namespace compStringNS::compStringConvNS;
 
 template<size_t i,size_t target,typename T,typename... Ts>
 struct mp_list_at_impl{
     static constexpr auto f(){
+        if constexpr(sizeof...(Ts) == 0){
+            return T{};
+        }else
         if constexpr(i == target){
             return T{};
         }else{
@@ -518,30 +554,56 @@ struct mp_list_at_impl{
     using type = decltype(f());
 };
 
-template<size_t i,size_t target,typename... Ts>
-struct mp_list_at_intern{
-
-    //static_assert(i< sizeof...(Ts),)
-};
-
 template<typename... T>
 struct mp_list{
-    //template<size_t i>
-
+    template<size_t i>
+    using at =typename mp_list_at_impl<0,i,T...>::type;
 };
+
+template<typename T>
+struct verbose_static_assert_messageData;
 
 template<template<typename...> typename caller,typename...T>
-struct get_name<caller<T...>>{
-    using name = typename templateNames<caller>::name;
-    static constexpr size_t argCount = sizeof...(T);
-
+struct verbose_static_assert_messageData<caller<T...>>{
+    static constexpr size_t argSize = sizeof...(T);
+    template<typename...Ts>
+    using templateType = caller<Ts...>;
+    using templateTypeString = typename templateNames<caller>::name;
+    template<size_t i>
+    using typeAt = typename mp_list<T...>::at<i>;
+    template<size_t i>
+    using typeStringAt = typename typeToCompString<typeAt<i>>::type;
 };
 
+template<typename...>
+struct emptyVSAmessage{
+    using msg = decltype("no message given"_compStr);
+};
 
+template<typename T,template<typename...> typename msg>
+struct verbose_static_assert;
 
+template<template<typename...> typename caller,typename...T, template<typename...> typename msg>
+struct verbose_static_assert<caller<T...>,msg>{
+    using ExprT = caller<T...>;
+    static constexpr auto value = ExprT::value;
+
+     using name = typename templateNames<caller>::name;
+    static constexpr size_t argCount = sizeof...(T);
+    using argList = mp_list<T...>;
+    using assert_msg = typename msg<caller<T...>>::msg;
+    static_assert(value,assert_msg::sv);
+
+    static void f(){
+        std::cout<<"msg: "<<assert_msg::sv<<std::endl;
+        std::cout<<"name: "<<name::sv<<std::endl;
+        int i=0;
+        ((std::cout<<"arg["<<i++<<"] "<<typeToCompString<T>::type::sv<<std::endl),...);
+        std::cout<<"TET:  "<<typeToCompString< typename argList::at<2>  >::type::sv<<std::endl;
+        std::cout<<"value: "<<value<<std::endl;
+    }
+};
 }
-}
-
 
 
 
@@ -672,44 +734,70 @@ struct TESTS{
 
 
 
-namespace verbose_static_assertNS{
-using namespace compStringNS;
-using namespace compStringNS::compStringConvNS;
-template<typename T>
-struct verbose_static_assert{
-    static constexpr const char* nameOfType = get_name<T>::name::str;
-    static constexpr auto value = T::value;
 
-    //static_assert(value,get_name<T>::name::sv);
-
-    static void f(){
-        std::cout<<"name: "<<nameOfType<<std::endl;
-        std::cout<<"value: "<<value<<std::endl;
-    }
-};
-}
 
 
 
 
 constexpr const char cstr1[]="hello";
 constexpr const char cstr2[]="this is a cstr";
+
+template<typename data, size_t i,typename ret>
+struct are_all_same_VSA_message_impl{
+    static constexpr auto f(){
+        static_assert(std::is_same_v<typename data::template typeAt<0>,int>);
+
+
+        if constexpr(data::argSize <i){
+            return ret{};
+        }else{
+            if constexpr(!std::is_same_v<typename data::template typeAt<0>,typename data::template typeAt<i>>){
+            using namespace compStringNS::compStringConvNS;
+            using msg = decltype("type "_compStr)::append<typename data::template typeStringAt<i>>
+            ::template append<decltype(" != "_compStr)>::template append< typename data::template typeStringAt<0> >
+            ::template append<decltype(" at pos "_compStr)>::template append<typename valueToCompString<i>::type >::template append<decltype(", \n"_compStr)>;
+            using retT = ret::template append<msg>;
+            using t = typename are_all_same_VSA_message_impl<data,i+1,retT>::type;
+            return t{};
+            }else{
+                using t = typename are_all_same_VSA_message_impl<data,i+1,ret>::type;
+                 return t{};
+            }
+        }
+    }
+    using type = decltype(f());
+};
+
+template<typename T>
+struct are_all_same_VSA_message {
+    using typeData = typename verbose_static_assertNS::verbose_static_assert_messageData<T>;
+
+    using msg = typename are_all_same_VSA_message_impl<typeData,1,decltype("\n"_compStr)>::type;
+};
+
+template<typename T,typename... U>
+struct are_all_same{
+    static constexpr bool value = ((std::is_same_v<T,U>)&&...);
+};
+
 int main() {
     using namespace std;
     using namespace compStringNS;
     using namespace compStringNS::compStringConvNS;
-    
+    using namespace verbose_static_assertNS;
     cout<<typeToCompString<int>::type::sv<<"$"<<endl;
     cout<<valueToCompString<234>::type::sv<<"$"<<endl;
     cout<<valueToCompString<cstr1>::type::sv<<"$"<<endl;
     cout<<valueToCompString<cstr2>::type::sv<<"$"<<endl;
-
+   
+    using t = are_all_same<int,int,char,float,int,double,int,long int,int>;
+    verbose_static_assert<t,are_all_same_VSA_message>{};
 
     cout<<endl;
     cout<<endl;
     using namespace verbose_static_assertNS;
-   verbose_static_assert<std::is_same<int,char>>::f();
-   verbose_static_assert<std::is_base_of<int,char>>::f();
+   //verbose_static_assert<std::is_same<int,char>,is_same_VSA_message>::f();
+   //verbose_static_assert<std::is_base_of<int,char>,is_same_VSA_message>::f();
 
     return 0;
 }
