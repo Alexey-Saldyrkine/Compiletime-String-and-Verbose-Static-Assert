@@ -2,8 +2,6 @@
 #include <iostream>
 #include <type_traits>
 
-#include <charconv>
-
 
 
 namespace compStringNS{
@@ -431,7 +429,7 @@ template<auto val>
 struct integerValToCompStringInterm{
     using T = decltype(val);
     static constexpr auto f(){
-        if constexpr(val >0){
+        if constexpr(val >=0){
             using t = typename integerValToCompString<T,val,decltype(""_compStr)>::type;
             return t{};
         }else{
@@ -505,35 +503,12 @@ struct templateNames<std::is_same>{
 
 createTemplateNameDefinition(std::is_base_of);
 
-
-
-
-
-
-
-
-// template<typename... T>
-// struct mp_list{
-//     template<size_t i>
-//     using at =typename mp_list_at_impl<0,i,T...>::type;
-// };
-
-// template<typename T>
-// struct get_name{
-//     using name = typename typeToCompString<T>::type;
-// };
-
-// template<template<typename...> typename caller,typename...T>
-// struct get_name<caller<T...>>{
-//     using name = typename templateNames<caller>::name;
-//     static constexpr size_t argCount = sizeof...(T);
-//     using argList = mp_list<T...>;
-// };
-
-
-
 }
 }
+
+
+
+
 
 namespace verbose_static_assertNS{
 using namespace compStringNS;
@@ -613,7 +588,7 @@ struct verbose_static_assert<caller<T...>,msg>{
 namespace {
 using namespace std::literals;
 using namespace compStringNS;
-struct TESTS{
+struct compStringTests{
     
     using str = decltype("hello world"_compStr);
     using our = decltype("our "_compStr);
@@ -733,6 +708,15 @@ struct TESTS{
 }
 
 
+namespace{
+    using namespace std::literals;
+    using namespace compStringNS;
+    using namespace compStringNS::compStringConvNS;
+    struct compStringConvTests{
+
+    };
+}
+
 
 
 
@@ -772,12 +756,77 @@ template<typename T>
 struct are_all_same_VSA_message {
     using typeData = typename verbose_static_assertNS::verbose_static_assert_messageData<T>;
 
-    using msg = typename are_all_same_VSA_message_impl<typeData,1,decltype("\n"_compStr)>::type;
+    using msg = typename are_all_same_VSA_message_impl<typeData,1,decltype("\nFound diffreant types:\n"_compStr)>::type;
 };
 
 template<typename T,typename... U>
 struct are_all_same{
     static constexpr bool value = ((std::is_same_v<T,U>)&&...);
+};
+
+
+template<typename typeData, size_t start,size_t i, typename ret>
+struct are_all_differant_VSA_message_impl_check{
+    static constexpr auto f(){
+       
+        if constexpr( i > typeData::argSize){
+            return ret{};
+        }else
+        if constexpr (std::is_same_v<typename typeData::template typeAt<start>,typename typeData::template typeAt<i>>){
+            using namespace compStringNS::compStringConvNS;
+            using typeName = typename typeData::template typeStringAt<start>;
+            using appMsg = decltype("found same type "_compStr)::append<typeName>
+            ::template append<decltype(" at pos "_compStr)>:: template append<typename valueToCompString<start>::type>
+            ::template append<decltype(" and "_compStr)>:: template append<typename valueToCompString<i>::type>::template append<decltype(", \n"_compStr)>;
+            using retT = ret::template append<appMsg>;
+            return typename are_all_differant_VSA_message_impl_check<typeData,start,i+1,retT>::type{};
+        }else{
+            return typename are_all_differant_VSA_message_impl_check<typeData,start,i+1,ret>::type{};
+        }
+    }   
+    using type = decltype(f());
+};
+
+template<typename typeData, typename typeSet, size_t i, typename ret>
+struct are_all_differant_VSA_message_impl{
+    static constexpr auto f(){
+        if constexpr(i>=typeData::argSize){
+            return ret{};
+        }else
+        if constexpr(! typeSet::template contains<typename typeData::template typeAt<i>>){
+            using retT = typename are_all_differant_VSA_message_impl_check<typeData,i,i+1,ret>::type;
+            using newTypeSet =typename typeSet::template add<typename typeData::template typeAt<i>>;
+            return typename are_all_differant_VSA_message_impl<typeData,newTypeSet,i+1,retT>::type{};
+        }else{
+            return typename are_all_differant_VSA_message_impl<typeData,typeSet,i+1,ret>::type{};
+        }
+    }
+    using type = decltype(f());
+};
+
+template<typename... T>
+struct type_set{
+    template<typename U>
+    static constexpr bool contains = ((std::is_same_v<U,T>)||...);
+    template<typename U>
+    using add = type_set<T...,U>;
+};
+
+template<typename T>
+struct are_all_differant_VSA_message{
+    using typeData = typename verbose_static_assertNS::verbose_static_assert_messageData<T>;
+    using typeSet = type_set<>;
+    using msg = typename are_all_differant_VSA_message_impl<typeData,typeSet,0,decltype("\nSame types found:\n"_compStr)>::type;
+};
+
+template<typename T,typename...U>
+struct are_all_differant{
+    static constexpr bool value = !((std::is_same_v<T,U>)||...) && are_all_differant<U...>::value;
+};
+
+template<typename T>
+struct are_all_differant<T>{
+    static constexpr bool value = 1;
 };
 
 int main() {
@@ -792,6 +841,8 @@ int main() {
    
     using t = are_all_same<int,int,char,float,int,double,int,long int,int>;
     verbose_static_assert<t,are_all_same_VSA_message>{};
+    using y = are_all_differant<int,long int,int, char,float,double,char,double>;
+    verbose_static_assert<y,are_all_differant_VSA_message>{};
 
     cout<<endl;
     cout<<endl;
