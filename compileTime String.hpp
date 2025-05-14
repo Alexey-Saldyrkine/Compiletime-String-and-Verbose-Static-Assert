@@ -63,7 +63,7 @@ struct findCharIndexImpl<index, target, std::integer_sequence<char, c>> {
 };
 
 template <typename>
-struct compString;
+struct compString{};
 
 template<typename,typename>
 struct appendStringImpl;
@@ -141,8 +141,8 @@ struct findFirstOfInter<i,str,compString<tstring<c...>>,dif,invert>{
 template<typename A, typename B, size_t pos1 = -1, size_t count1 =(A::size - pos1), size_t pos2=-1, size_t count2 =(B::size - pos2)>
 struct compareCompString{
     static constexpr int f(){
-       using strA = A::template substr<(pos1 == -1 ? 0 : pos1),(pos1 == -1 ? A::size : pos1 + count1)>;
-       using strB = B::template substr<(pos2 == -1 ? 0 : pos2),(pos2 == -1 ? B::size : pos2 + count2)>;
+       using strA = typename A::template substr<(pos1 == -1 ? 0 : pos1),(pos1 == -1 ? A::size : pos1 + count1)>;
+       using strB = typename B::template substr<(pos2 == -1 ? 0 : pos2),(pos2 == -1 ? B::size : pos2 + count2)>;
        if(strA::sv == strB::sv){
             return 0;
        }
@@ -249,12 +249,42 @@ constexpr auto toCompStringImpl(std::string_view s){
         return typename appendStringImpl<tstring<s[i]>,decltype(toCompStringImpl<i+1,emptystr>(s)) >::type{};
     }
 }
+template<typename T>
+struct typeWrapper{
+    using type = T;
+};
 
+template<typename str,size_t i>
+struct compStringReverseImpl{
+    static constexpr auto f(){
+        if constexpr(str::size == 0){
+            return typeWrapper<str>{};
+        }else
+        if constexpr(i < str::size-1){
+            using t = typename compStringReverseImpl<str,i+1>::type::type;
+            using retType = typename t::push_back<str::template at<i>>;
+            return typeWrapper<retType>{};
+        }else{
+            using retType = compString<detail::tstring< str::template at<str::size-1> > >;
+            return typeWrapper<retType>{};
+        }
+    }
+    using type = decltype(f());
+};
+
+template<typename str>
+struct compStringReverse{
+    using inter = typename compStringReverseImpl<str,0>::type;
+    using type  = typename inter::type;
+};
 
 }
 using detail::compString;
 template <char... c>
 struct compString<detail::tstring<c...>> {
+
+  
+
   using thisStr = compString<detail::tstring<c...>>;
   static constexpr char str[sizeof...(c) + 1] = {c..., '\0'};
   static constexpr size_t size = sizeof...(c);
@@ -273,6 +303,7 @@ struct compString<detail::tstring<c...>> {
     static constexpr const char* c_str = str;
     static constexpr char front = at<0>;
     static constexpr char back = at<size-1>;
+
     static constexpr const char* data = c_str;
     static constexpr const auto to_basic_string_view = std::basic_string_view(str,size);
     static constexpr const auto sv = to_basic_string_view;
@@ -324,12 +355,18 @@ struct compString<detail::tstring<c...>> {
     static constexpr bool lesserEq = equal<str> || lesser<str>;
     template<typename str>
     static constexpr bool greaterEq = equal<str> || greater<str>;
-
     template<typename pred>
     using erase_if = typename erase_ifImpl<0,thisStr,pred>::type;
     template<typename replaceFunc>
     using replace_if = typename replace_ifImpl<0,thisStr,replaceFunc>::type;
 
+    static constexpr size_t sizeInterm = size;
+    struct out{
+        const char * data = str;
+        size_t size = sizeInterm;
+    };
+
+    static constexpr out outobj = out{};
 };
 
 template <typename T, T... chars>
@@ -337,4 +374,160 @@ constexpr compString<detail::tstring<chars...>> operator""_compStr() {
   return {};
 }
 
+}
+
+namespace compStringNS{
+namespace compStringConvNS{
+
+
+
+
+
+template<typename T>
+struct typeToCompStringInter{
+    using type = decltype("[no name given to type]"_compStr);
+};
+
+template<>
+struct typeToCompStringInter<int>{
+    using type = decltype("int"_compStr);
+};
+
+#define createTypeNameDefinition(x) template<> struct typeToCompStringInter<x>{ using type = decltype(#x ""_compStr);};
+
+createTypeNameDefinition(char);
+createTypeNameDefinition(unsigned int);
+createTypeNameDefinition(long int);
+createTypeNameDefinition(unsigned long int);
+createTypeNameDefinition(long long int);
+createTypeNameDefinition(unsigned long long int);
+createTypeNameDefinition(float);
+createTypeNameDefinition(double);
+
+
+
+template<typename T>
+struct typeToCompString{
+    static constexpr auto f(){
+        using t = std::remove_cv<T>::type;
+        if constexpr(std::is_const_v<T> && std::is_volatile_v<T>){
+            return typename decltype("const volatile "_compStr)::append<typename typeToCompStringInter<t>::type>{};
+        }else
+        if constexpr(std::is_volatile_v<T>){
+            return typename decltype("volatile "_compStr)::append<typename typeToCompStringInter<t>::type>{};
+        }else
+        if constexpr(std::is_const_v<T>){
+            return typename decltype("const "_compStr)::append<typename typeToCompStringInter<t>::type>{};
+        }else{
+            return typename typeToCompStringInter<t>::type{};
+        }
+    }
+    using type = decltype(f());
+};
+
+
+template<typename T, auto val>
+struct valueToCompStringInter{
+    using type = decltype("[no name given to value]"_compStr);
+};
+
+
+
+template<typename T, T val,typename str>
+struct integerValToCompString{
+    static constexpr auto f(){
+        if constexpr(val >=10){
+        constexpr T i = val%10;
+        using t = str::template push_back<'0'+i>;
+        return typename integerValToCompString<T,val/10,t>::type{};
+        }else{
+             using t = str::template push_back<static_cast<char>('0'+val)>;
+             return t{};
+        }
+    }
+   // using inter =
+    using type = decltype(f());//= typename detail::compStringReverse<inter>::type;
+};
+
+template<auto val>
+struct integerValToCompStringInterm{
+    using T = decltype(val);
+    static constexpr auto f(){
+        if constexpr(val >=0){
+            using t = typename integerValToCompString<T,val,decltype(""_compStr)>::type;
+            return typename detail::compStringReverse<t>::type{};
+        }else{
+            using t = typename integerValToCompString<T,-val,decltype(""_compStr)>::type;
+            return typename detail::compStringReverse<t>::type::template prepend<decltype("-"_compStr)>{};
+        }
+    }
+    
+    
+    using type = decltype(f());
+};
+
+
+template<auto val>
+struct valueToCompString{
+    static constexpr auto f(){
+        using T = decltype(val);
+        if constexpr(std::is_integral_v<T>){
+            return typename integerValToCompStringInterm<val>::type{};
+        }else{
+            return typename valueToCompStringInter<decltype(val),val>::type{};
+        }
+    }
+    using type = decltype(f());   
+};
+
+
+
+template<typename T,size_t i, size_t size,const char* buf>
+struct charArrayToType{
+    static constexpr auto f(){
+        if constexpr(i<size){
+            using t = typename T::template push_back<*(buf+i)>;
+            return typename charArrayToType<t,i+1,size,buf>::type{};
+        }else{
+            return T{};
+        }
+    }
+
+    using type = decltype(f());
+};
+
+template<const char* buf>
+constexpr size_t getCstrLength(){
+    size_t ret=0;
+    while(*(buf+ret) != '\0') ret++;
+    return ret;
+}
+
+template<const char* buf >
+struct valueToCompStringInter<const char*,buf>{
+    using type = charArrayToType<decltype(""_compStr),0,getCstrLength<buf>(),buf>::type;
+};
+
+
+
+
+
+
+template<template<typename...> typename Caller>
+struct templateNames{
+    using name = decltype("undefiend name"_compStr);
+    //static_assert(0);
+};
+
+#define createTemplateNameDefinition(x) template<> struct templateNames<x>{ using name = decltype(#x ""_compStr);};
+
+
+template<>
+struct templateNames<std::is_same>{
+    using name = decltype("std::is_same"_compStr);
+};
+
+createTemplateNameDefinition(std::is_base_of);
+
+}
 }

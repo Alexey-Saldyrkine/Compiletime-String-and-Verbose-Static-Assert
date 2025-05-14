@@ -1,8 +1,9 @@
 #include "compileTime String.hpp"
+
 namespace {
 using namespace std::literals;
 using namespace compStringNS;
-struct TESTS{
+struct compStringTests{
     
     using str = decltype("hello world"_compStr);
     using our = decltype("our "_compStr);
@@ -119,4 +120,61 @@ struct TESTS{
     static_assert(str::replace_if<replaceFuncD>::sv == "hYlYo wYrYd"sv);
 
 };
+}
+
+
+namespace{
+    using namespace std::literals;
+    using namespace compStringNS;
+    using namespace compStringNS::compStringConvNS;
+    template<auto V>
+    constexpr auto vToSV = valueToCompString<V>::type::sv;
+    struct compStringConvTestsValue{
+        #define vToSvTestI(x) static_assert(vToSV<x> == #x""sv,vToSV<x>);
+        #define vToSvTest(x,str) static_assert(vToSV<x> == #str""sv,vToSV<x>);
+        //integer to compString
+        static_assert(vToSV<0> == "0"sv);
+        vToSvTestI(1);
+        vToSvTestI(-1);
+        vToSvTestI(22);
+        vToSvTestI(-123);
+        vToSvTestI(321);
+        vToSvTestI(-63);
+        vToSvTestI(1234);
+        vToSvTestI(-6345);
+        vToSvTestI(12345);
+        vToSvTestI(-73529);
+        vToSvTestI(234623423622346);
+        vToSvTestI(-234623423622346);
+        vToSvTest(-1ull,18446744073709551615);
+        vToSvTest(1ull,1);
+        vToSvTest(-1u,   4294967295);
+        vToSvTest(-2353u,4294964943)
+
+        // const char*
+
+        #define constCharPTests(n,x) static constexpr const char TTP_##n []= x; static_assert( vToSV<TTP_##n> == x""sv);
+
+        constCharPTests(a,"hello world, abra, snore, galaxy world");
+        constCharPTests(b,"23465134rsadf2gqraskfiq432t wmetrntq2u3nr v  m3ir 23trm w4it 20it imweiomt23mr i");
+    };
+
+    struct compStringConvTypes{
+        template<typename T>
+        static constexpr auto tToSv = typeToCompString<T>::type::sv;
+        #define testType(x) static_assert(tToSv<x> == #x""sv,tToSv<x>);
+        testType(int);
+        testType(const int);
+        testType(const volatile int);
+        testType(volatile int);
+        testType(char);
+        testType(const char);
+        testType(volatile char);
+        testType(const volatile char);
+        testType(long int);
+        testType(long long int);
+        testType(const volatile long long int);
+        testType(float);
+        testType(const volatile double);
+    };
 }

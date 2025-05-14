@@ -379,17 +379,22 @@ constexpr compString<detail::tstring<chars...>> operator""_compStr() {
 
 namespace compStringNS{
 namespace compStringConvNS{
+
+
+
+
+
 template<typename T>
-struct typeToCompString{
+struct typeToCompStringInter{
     using type = decltype("[no name given to type]"_compStr);
 };
 
 template<>
-struct typeToCompString<int>{
+struct typeToCompStringInter<int>{
     using type = decltype("int"_compStr);
 };
 
-#define createTypeNameDefinition(x) template<> struct typeToCompString<x>{ using type = decltype(#x ""_compStr);};
+#define createTypeNameDefinition(x) template<> struct typeToCompStringInter<x>{ using type = decltype(#x ""_compStr);};
 
 createTypeNameDefinition(char);
 createTypeNameDefinition(unsigned int);
@@ -400,6 +405,26 @@ createTypeNameDefinition(unsigned long long int);
 createTypeNameDefinition(float);
 createTypeNameDefinition(double);
 
+
+
+template<typename T>
+struct typeToCompString{
+    static constexpr auto f(){
+        using t = std::remove_cv<T>::type;
+        if constexpr(std::is_const_v<T> && std::is_volatile_v<T>){
+            return typename decltype("const volatile "_compStr)::append<typename typeToCompStringInter<t>::type>{};
+        }else
+        if constexpr(std::is_volatile_v<T>){
+            return typename decltype("volatile "_compStr)::append<typename typeToCompStringInter<t>::type>{};
+        }else
+        if constexpr(std::is_const_v<T>){
+            return typename decltype("const "_compStr)::append<typename typeToCompStringInter<t>::type>{};
+        }else{
+            return typename typeToCompStringInter<t>::type{};
+        }
+    }
+    using type = decltype(f());
+};
 
 
 template<typename T, auto val>
@@ -421,8 +446,8 @@ struct integerValToCompString{
              return t{};
         }
     }
-    using inter = decltype(f());
-    using type = typename detail::compStringReverse<inter>::type;
+   // using inter =
+    using type = decltype(f());//= typename detail::compStringReverse<inter>::type;
 };
 
 template<auto val>
@@ -431,10 +456,10 @@ struct integerValToCompStringInterm{
     static constexpr auto f(){
         if constexpr(val >=0){
             using t = typename integerValToCompString<T,val,decltype(""_compStr)>::type;
-            return t{};
+            return typename detail::compStringReverse<t>::type{};
         }else{
             using t = typename integerValToCompString<T,-val,decltype(""_compStr)>::type;
-            return typename t::template prepend<decltype("-"_compStr)>{};
+            return typename detail::compStringReverse<t>::type::template prepend<decltype("-"_compStr)>{};
         }
     }
     
@@ -487,6 +512,8 @@ struct valueToCompStringInter<const char*,buf>{
 
 
 
+
+
 template<template<typename...> typename Caller>
 struct templateNames{
     using name = decltype("undefiend name"_compStr);
@@ -513,7 +540,7 @@ createTemplateNameDefinition(std::is_base_of);
 namespace verbose_static_assertNS{
 using namespace compStringNS;
 using namespace compStringNS::compStringConvNS;
-
+namespace detail{
 template<size_t i,size_t target,typename T,typename... Ts>
 struct mp_list_at_impl{
     static constexpr auto f(){
@@ -534,6 +561,7 @@ struct mp_list{
     template<size_t i>
     using at =typename mp_list_at_impl<0,i,T...>::type;
 };
+}
 
 template<typename T>
 struct verbose_static_assert_messageData;
@@ -545,14 +573,9 @@ struct verbose_static_assert_messageData<caller<T...>>{
     using templateType = caller<Ts...>;
     using templateTypeString = typename templateNames<caller>::name;
     template<size_t i>
-    using typeAt = typename mp_list<T...>::at<i>;
+    using typeAt = typename detail::mp_list<T...>::at<i>;
     template<size_t i>
     using typeStringAt = typename typeToCompString<typeAt<i>>::type;
-};
-
-template<typename...>
-struct emptyVSAmessage{
-    using msg = decltype("no message given"_compStr);
 };
 
 template<typename T,template<typename...> typename msg>
@@ -565,7 +588,7 @@ struct verbose_static_assert<caller<T...>,msg>{
 
      using name = typename templateNames<caller>::name;
     static constexpr size_t argCount = sizeof...(T);
-    using argList = mp_list<T...>;
+    using argList = detail::mp_list<T...>;
     using assert_msg = typename msg<caller<T...>>::msg;
     static_assert(value,assert_msg::sv);
 
@@ -712,8 +735,55 @@ namespace{
     using namespace std::literals;
     using namespace compStringNS;
     using namespace compStringNS::compStringConvNS;
-    struct compStringConvTests{
+    template<auto V>
+    constexpr auto vToSV = valueToCompString<V>::type::sv;
+    struct compStringConvTestsValue{
+        #define vToSvTestI(x) static_assert(vToSV<x> == #x""sv,vToSV<x>);
+        #define vToSvTest(x,str) static_assert(vToSV<x> == #str""sv,vToSV<x>);
+        //integer to compString
+        static_assert(vToSV<0> == "0"sv);
+        vToSvTestI(1);
+        vToSvTestI(-1);
+        vToSvTestI(22);
+        vToSvTestI(-123);
+        vToSvTestI(321);
+        vToSvTestI(-63);
+        vToSvTestI(1234);
+        vToSvTestI(-6345);
+        vToSvTestI(12345);
+        vToSvTestI(-73529);
+        vToSvTestI(234623423622346);
+        vToSvTestI(-234623423622346);
+        vToSvTest(-1ull,18446744073709551615);
+        vToSvTest(1ull,1);
+        vToSvTest(-1u,   4294967295);
+        vToSvTest(-2353u,4294964943)
 
+        // const char*
+
+        #define constCharPTests(n,x) static constexpr const char TTP_##n []= x; static_assert( vToSV<TTP_##n> == x""sv);
+
+        constCharPTests(a,"hello world, abra, snore, galaxy world");
+        constCharPTests(b,"23465134rsadf2gqraskfiq432t wmetrntq2u3nr v  m3ir 23trm w4it 20it imweiomt23mr i");
+    };
+
+    struct compStringConvTypes{
+        template<typename T>
+        static constexpr auto tToSv = typeToCompString<T>::type::sv;
+        #define testType(x) static_assert(tToSv<x> == #x""sv,tToSv<x>);
+        testType(int);
+        testType(const int);
+        testType(const volatile int);
+        testType(volatile int);
+        testType(char);
+        testType(const char);
+        testType(volatile char);
+        testType(const volatile char);
+        testType(long int);
+        testType(long long int);
+        testType(const volatile long long int);
+        testType(float);
+        testType(const volatile double);
     };
 }
 
@@ -723,8 +793,6 @@ namespace{
 
 
 
-constexpr const char cstr1[]="hello";
-constexpr const char cstr2[]="this is a cstr";
 
 template<typename data, size_t i,typename ret>
 struct are_all_same_VSA_message_impl{
@@ -830,25 +898,14 @@ struct are_all_differant<T>{
 };
 
 int main() {
-    using namespace std;
-    using namespace compStringNS;
-    using namespace compStringNS::compStringConvNS;
+ 
     using namespace verbose_static_assertNS;
-    cout<<typeToCompString<int>::type::sv<<"$"<<endl;
-    cout<<valueToCompString<234>::type::sv<<"$"<<endl;
-    cout<<valueToCompString<cstr1>::type::sv<<"$"<<endl;
-    cout<<valueToCompString<cstr2>::type::sv<<"$"<<endl;
    
     using t = are_all_same<int,int,char,float,int,double,int,long int,int>;
     verbose_static_assert<t,are_all_same_VSA_message>{};
     using y = are_all_differant<int,long int,int, char,float,double,char,double>;
     verbose_static_assert<y,are_all_differant_VSA_message>{};
 
-    cout<<endl;
-    cout<<endl;
-    using namespace verbose_static_assertNS;
-   //verbose_static_assert<std::is_same<int,char>,is_same_VSA_message>::f();
-   //verbose_static_assert<std::is_base_of<int,char>,is_same_VSA_message>::f();
 
     return 0;
 }
