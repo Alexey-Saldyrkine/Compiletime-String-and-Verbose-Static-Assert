@@ -1,7 +1,7 @@
 # Table of Contents
 - [Compile time string](#Compile-time-String)
 	- [Member functions](#Member-functions)
-	= [value to compString](#Value-to-compString)
+	- [value to compString](#Value-to-compString)
 	- [compString to value](#getting-a-string-as-a-value)
 - [Verbose static assert](#Verbose-static-assert)
 - [Requirements](#Requirements) 
