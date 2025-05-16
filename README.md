@@ -1,7 +1,7 @@
 # Table of Contents
 - [Compile time string](#Compile-time-String)
 	- [Member functions](#Member-functions)
-	- [value to compString](#Value-to-compString)
+	- [value to compString](#conversion-of-value-and-types-to-compString)
 	- [compString to value](#getting-a-string-as-a-value)
 - [Verbose static assert](#Verbose-static-assert)
 - [Requirements](#Requirements) 
@@ -30,6 +30,14 @@ The full list can be found at docs/compString.md<br>
 Notably functions that work with runtime memory allocation/deallocation (reserve, capacity, ...) are not present, as compString exists within compile time.<br>
 
 ## conversion of value and types to compString
+For the conversion of types to compString there is a helper type typeToCompStringInter\<typename T>.<br>
+If the type T can be converted to a string representation by typeToCompStringInter, than the member type 'type' will be it, 
+otherwise it will be a compString of "[no name given to type]".<br>
+For the conversion of values to compString there is a helper type valueToCompString\<valueType value>.<br>
+If the type can be converted to a string representation by valueToCompString, than the member type 'type' will be it,
+otherwise it will be a compString of "[no name given to value]".<br>
+For details see docs/compStringConv.md<br>
+
 
 ## getting a string as a value
 If you would like to convert a compString type to a value, you could get a std::string_view using the member values to_basic_string_view or the shorthand sv.<br>
@@ -67,6 +75,7 @@ found same type double at pos 5 and 8, <br>
 
 This dynamic message is more helpful and useful than a static "found at least two equal types" message.<br>
 
+For details see docs/verbose static assert.md<br>
 
 # Requirements 
 compString requires c++20 or higher.<br>
