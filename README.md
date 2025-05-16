@@ -34,7 +34,7 @@ For the conversion of types to compString there is a helper type typeToCompStrin
 If the type T can be converted to a string representation by typeToCompStringInter, than the member type 'type' will be it, 
 otherwise it will be a compString of "[no name given to type]".<br>
 For the conversion of values to compString there is a helper type valueToCompString\<valueType value>.<br>
-If the type can be converted to a string representation by valueToCompString, than the member type 'type' will be it,
+If the value can be converted to a string representation by valueToCompString, than the member type 'type' will be it,
 otherwise it will be a compString of "[no name given to value]".<br>
 For details see docs/compStringConv.md<br>
 
