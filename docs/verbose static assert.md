@@ -34,7 +34,7 @@ The default translator is VSA_translate_with_only_types<br>
 Example:<br>
 Lets say we have a type MpFunc\<typename T, bool A, typename... Us>, and we want to create a translator for it.<br>
 
-'''
+```
 //start with a base template that we will specialize
 template<typename>
 struct translaterT;
@@ -54,7 +54,7 @@ struct translaterT<container<T,A,Us...>>{
 	//create the final VSA_template_parameter_pack_data type
 	using type = verbose_static_assertNS::VSA_template_parameter_pack_data<list,contT>
 };
-'''
+```
 
 
 
