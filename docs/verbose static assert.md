@@ -21,7 +21,8 @@ Requirements for template parameters:<br>
 ### verbose static assert flow chart
 ```mermaid
 flowchart TD
-	A[VSA instantiation] --> B{ evaluate T::value }
+	A[VSA instantiation
+	VSA<T,msgTemplate,msgTranslator>] --> B{ evaluate T::value }
 	B -- true --> C[no error occurs]
 	C --> D[End]
 	B -- false --> E[start creating the error message]
