@@ -83,7 +83,7 @@ compString::append\<compString str> -> compString<br>
 Returns a compString with str appended to the end of the compString.<br>
 Example:<br>
 ```cpp
-using retStr = decltype("AA"_compStr)::append\<decltype("BB"_compStr)>; // retStr contains "AABB"
+using retStr = decltype("AA"_compStr)::append<decltype("BB"_compStr)>; // retStr contains "AABB"
 ```
 
 ### prepend
@@ -91,89 +91,111 @@ compString::prepend\<compString str> -> compString<br>
 Returns a compString with str prepended to the begginning of the compString.<br>
 Example:<br>
 ```cpp
-using retStr = decltype("AA"_compStr)::prepend\<decltype("BB"_compStr)>; // retStr contains "BBAA"
+using retStr = decltype("AA"_compStr)::prepend<decltype("BB"_compStr)>; // retStr contains "BBAA"
 ```
 
 ### clear
-compString = compString::clear<br>
+compString::clear -> compString<br>
 Returns an empty compString.<br>
 Equivalent to decltype(""_compStr).<br>
 Example:<br>
+```cpp
 using retStr = decltype("hello world"_compStr)::clear; // retStr is an empty compString
+```
 
 #### insert
-compString = compString::insert\<size_t pos, compString str><br>
+compString::insert\<size_t pos, compString str> -> compString<br>
 Returns a compString with the compString str inserted after the character at pos.<br>
 Example:<br>
-using retStr =  decltype("hello world"_compStr)::insert<5,decltype("my "_compStr)>; // retStr contains "hello my wolrd"<br>
+```cpp
+using retStr =  decltype("hello world"_compStr)::insert<5,decltype("my "_compStr)>; // retStr contains "hello my wolrd"
+```
 
 ### erase
-compString = compString::erase\<size_t pos, size_t count><br>
+compString::erase\<size_t pos, size_t count> -> compString<br>
 Returns a compString that contains all characters, except the characters in the range \[pos,min(size,pos+count)].<br>
 Example:<br>
-using retStr = decltype("hello my world"_compStr)::erase<5,3>; // retStr contains "hello world"<br>
+```cpp
+using retStr = decltype("hello my world"_compStr)::erase<5,3>; // retStr contains "hello world"
+```
 
 ### push_back
-compString = compString::push_back\<char chr><br>
+compString::push_back\<char chr> -> compString<br>
 Returns a compString with char appended to the end.<br>
 Example:<br>
-using retStr = decltype("hello my world"_compStr)::push_back<'s'>; // restStr contains "hello worlds"<br>
+```cpp
+using retStr = decltype("hello my world"_compStr)::push_back<'s'>; // restStr contains "hello worlds"
+```
 
 ### pop_back
-compString = compString::pop_back<br>
+compString::pop_back<> -> compString<br>
 Return a compString with all but the last character.<br>
 Example:<br>
-using retStr = decltype("hello my world"_compStr)::pop_back; // retStr contains "hello worl"<br>
+```cpp
+using retStr = decltype("hello my world"_compStr)::pop_back<>; // retStr contains "hello worl"
+```
 
 ## Search
 
 ### find
-size_t = compString::find\<compString str, size_t pos = 0><br>
+compString::find\<compString str, size_t pos = 0> -> size_t<br>
 Returns the index of the first occurrence of str in the compString, after pos.<br>
 Pos defaults to 0.<br>
 If no occurrence is found, -1ull will be returned.<br>
 Example:<br>
-constexpr size_t i =  decltype("hello my world"_compStr)::find\<decltype("my"_compStr)>; // i = 6
+```cpp
+constexpr size_t i =  decltype("hello my world"_compStr)::find<decltype("my"_compStr)>; // i = 6
+```
 
 ### rfind 
-size_t = compString::rfind\<compString str, size_t pos = compString::size><br>
+ompString::rfind\<compString str, size_t pos = compString::size> -> size_t<br>
 Returns the index of the last occurrence of str in the compString, before pos.<br>
 Pos defaults to compString::size.<br>
 If no occurrence is found, -1ull will be returned.<br>
 Example:<br>
-constexpr size_t i =  decltype("my, oh my"_compStr)::rfind\<decltype("my"_compStr)>; // i = 7
+```cpp
+constexpr size_t i =  decltype("my, oh my"_compStr)::rfind<decltype("my"_compStr)>; // i = 7
+```
 
 ### find_first_of
-size_t = compString::find_first_of\<compString str, size_t pos = 0>
-Returns the index of the first occurrence ,of any character of str, in compString, after pos.<br>
+compString::find_first_of\<compString str, size_t pos = 0> -> size_t<br>
+Returns the index of the first occurrence, of any character of str, in compString, after pos.<br>
 Pos defaults to 0.<br>
 If no occurrence is found, -1ull will be returned.<br>
 Example:<br>
-constexpr size_t i = decltype("hello my world"_compStr)::find_first_of\<decltype("mylw"_compStr)>; // i = 2
+```cpp
+constexpr size_t i = decltype("hello my world"_compStr)::find_first_of<decltype("mylw"_compStr)>; // i = 2
+```
 
 ### find_first_not_of
-size_t = compString::find_first_not_of\<compString str, size_t pos = 0>
+compString::find_first_not_of\<compString str, size_t pos = 0> -> size_t
 Returns the index of the first occurrence, of any character not in str, in compString, after pos.<br>
 Pos defaults to 0.<br>
 If no occurrence is found, -1ull will be returned.<br>
 Example:<br>
-constexpr size_t i = decltype("hello my world"_compStr)::find_first_not_of\<decltype("ole h"_compStr)>; // i = 6
+```cpp
+constexpr size_t i = decltype("hello my world"_compStr)::find_first_not_of<decltype("ole h"_compStr)>; // i = 6
+```
 
 ### find_last_of
-size_t = compString::find_last_of\<compString str, size_t pos = compString::size>
+compString::find_last_of\<compString str, size_t pos = compString::size> -> size_t<br>
 Returns the index of the last occurrence, of any character of str, in compString, before pos.<br>
 Pos defaults to compString::size.<br>
 If no occurrence is found, -1ull will be returned.<br>
 Example:<br>
-constexpr size_t i = decltype("hello my world"_compStr)::find_last_of\<decltype("mylw"_compStr)>; // i = 12
+```cpp
+constexpr size_t i = decltype("hello my world"_compStr)::find_last_of<decltype("mylw"_compStr)>; // i = 12
+```
 
 ### find_last_not_of
-size_t = compString::find_last_not_of\<compString str, size_t pos = compString::size><br>
+compString::find_last_not_of\<compString str, size_t pos = compString::size> -> size_t<br>
 Returns the index of the last occurrence, of any character not in str, in compString, before pos.<br>
 Pos defaults to compString::size.<br>
 If no occurrence is found, -1ull will be returned.<br>
 Example:<br>
-constexpr size_t i = decltype("hello my world"_compStr)::find_last_not_of\<decltype("mylwo rd"_compStr)>; // i = 1
+```cpp
+constexpr size_t i = decltype("hello my world"_compStr)::find_last_not_of<decltype("mylwo rd"_compStr)>; // i = 1
+```
 
 ## Operations
 
