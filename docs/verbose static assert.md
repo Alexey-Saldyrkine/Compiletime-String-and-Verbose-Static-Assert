@@ -1,10 +1,11 @@
 # Verbose Static Assert
 
-With cpp++26 static_assert can now output user-generated error messages.(see [static_assert(3)](https://en.cppreference.com/w/cpp/language/static_assert.html))
+With cpp++26 static_assert can now output user-generated error messages (see [static_assert(3)](https://en.cppreference.com/w/cpp/language/static_assert.html)).<br>
+We can use this to 'dynamically' create an error message during compile time for meta functions, using template metaprogramming.<br>
 
 The idea behind verbose static assert is to give the ability for programmers to create custom dynamic compile time error messages for their templated types.<br>
 Having such error messages can be very useful for programmers that will be using the created types, allowing them to easily see what conditions lead to a compiler error.<br>
-While it is mainly intended for metaprogramming, it can be used in any
+While it is mainly intended for metaprogramming, it can be used in any compile time context.<br>
 
 ## general overview
 
@@ -13,7 +14,7 @@ Verbose Static Assert takes three types as template Arguments:<br>
 verbose_static_assert\<typename T, template\<typename> typename msgTemplate, tempalte\<typename> typename msgTranslator><br>
 Where typename T is a metaprogramming function that is being asserted.<br>
 Where msgTemplate is an incomplete templated type that serves as the instructions to create an error message based on T.<br>
-Where msgTranslator is an incomplete templated type that will transform the template parameters for T into a verbose_static_assertNS:: VSA_template_parameter_pack_data.<br>
+Where msgTranslator is an incomplete templated type that will transform the template parameters for T into a verbose_static_assertNS::VSA_template_parameter_pack_data.<br>
 
 Requirements for template parameters:<br>
 - typename T must have a member value, of a type that can be implicitly converted to bool, named 'value'.<br>
