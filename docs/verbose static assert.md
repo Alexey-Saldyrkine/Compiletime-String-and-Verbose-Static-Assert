@@ -10,14 +10,14 @@ While it is mainly intended for metaprogramming, it can be used in any compile t
 ## general overview
 
 Verbose Static Assert is a wrapper type around static assert.<br>
-Verbose Static Assert takes three types as template Arguments:<br>
+Verbose Static Assert three template parameters:<br>
 verbose_static_assert\<typename T, template\<typename> typename msgTemplate, tempalte\<typename> typename msgTranslator><br>
 
 - Where typename T is a metaprogramming function that is being asserted.<br>
 - Where msgTemplate is an incomplete templated type that serves as the instructions to create an error message based on T.<br>
 - Where msgTranslator is an incomplete templated type that will transform the template parameters for T into a verbose_static_assertNS::VSA_template_parameter_pack_data.<br>
 
-Requirements for template parameters:<br>
+Requirements for the template parameters:<br>
 - typename T must have a member value, of a type that can be implicitly converted to bool, named 'value'.<br>
 - msgTemplate must have a member type name 'msg' that is a compString type containing the generated error message.<br> 
 - msgTranslator must have a member type named 'type' that is a verbose_static_assertNS::VSA_template_parameter_pack_data constructed from T.<br>
@@ -40,7 +40,9 @@ flowchart TD
 ### msgTranslator
 The job of the message translator is to take the type T, extract its template parameters and type, and create a verbose_static_assertNS::VSA_template_parameter_pack_data based of the template parameters.<br>
 VSA_template_parameter_pack_data\<typeList,containerT> requires two template parameters:
-- typeList must be a verbose_static_assertNS::detail::mp_list, which contains the template parameters of T, any parameter that is a value must be converted to a type using the type verbose_static_assertNS::detail::valueAsType.<br>
+- typeList must be a verbose_static_assertNS::detail::mp_list, which contains the template parameters of T, 
+any parameter that is a value must be converted to a type using the type verbose_static_assertNS::detail::valueAsType.
+All template parameters must be in the same order as the are in T<br>
 - containerT is a the template type of T. As containerT is somewhat optional, as their is no generic way to pass a template template parameter, so containerT can be a the type T itself, or a complete type of the template T with specific parameters, or any other complete type, such as void. What containerT will be is dependent on the context of where the translator will be used.<br>
 
 
