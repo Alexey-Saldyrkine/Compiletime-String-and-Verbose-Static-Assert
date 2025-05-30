@@ -2,7 +2,7 @@
 - [Compile time string](#Compile-time-String)
 	- [Member functions](#Member-functions)
 	- [value to compString](#conversion-of-value-and-types-to-compString)
-	- [compString to value](#getting-a-string-as-a-value)
+	- [compString to value](#compString-to-value)
 - [Verbose static assert](#Verbose-static-assert)
 - [Requirements](#Requirements) 
 # Compile time String
@@ -47,7 +47,7 @@ otherwise it will be a compString of "[no name given to value]".<br>
 For details see docs/compStringConv.md<br>
 
 
-## getting a string as a value
+## compString to value
 If you would like to convert a compString type to a value, you could get a constexpr std::string_view using the member values to_basic_string_view or the shorthand sv.<br>
 Then the std::string_view value can be used in compile time or runtime.<br>
 
