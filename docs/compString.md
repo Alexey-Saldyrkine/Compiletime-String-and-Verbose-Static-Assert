@@ -124,7 +124,7 @@ compString::push_back\<char chr> -> compString<br>
 Returns a compString with char appended to the end.<br>
 Example:<br>
 ```cpp
-using retStr = decltype("hello my world"_compStr)::push_back<'s'>; // restStr contains "hello worlds"
+using retStr = decltype("hello world"_compStr)::push_back<'s'>; // restStr contains "hello worlds"
 ```
 
 ### pop_back
@@ -132,7 +132,15 @@ compString::pop_back<> -> compString<br>
 Return a compString with all but the last character.<br>
 Example:<br>
 ```cpp
-using retStr = decltype("hello my world"_compStr)::pop_back<>; // retStr contains "hello worl"
+using retStr = decltype("hello world"_compStr)::pop_back<>; // retStr contains "hello worl"
+```
+
+### reverse
+compString::reverse/<> -> compString
+Returns the reverse of compString.<br>
+Example:<br>
+```cpp
+Using str = decltype("hello world"_compStr)::reverse<>; // str contains "dlrow olleh"
 ```
 
 ## Search
