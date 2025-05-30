@@ -22,7 +22,7 @@ Requirements for template parameters:<br>
 ```mermaid
 flowchart TD
 	A[VSA instantiation
-	VSA<T,msgTemplate,msgTranslator>] --> B{ evaluate T::value }
+	VSA\<T,msgTemplate,msgTranslator>] --> B{ evaluate T::value }
 	B -- true --> C[no error occurs]
 	C --> D[End]
 	B -- false --> E[start creating the error message]
