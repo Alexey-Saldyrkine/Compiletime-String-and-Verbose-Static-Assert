@@ -18,12 +18,20 @@ It can be thought in a zero side effect, functional paradigm.<br>
 Instead of using member functions to represent the functions of std::string, compString uses member types and values.<br>
 If a function of std::string has parameters, then a templated type or value is used, where the template parameters are used instead of function parameters.<br>
 Example:<br>
-In std::string str the function push_back will be called as such:<br>
-str.push_back('!');<br>
-Here str will be modified.
-In compString cmpStr the 'function' will be 'called' using the templated member type push_back:<br>
-Using newCmpStr = cmpStr::push_back\<'!'>;<br>
-Here newCmpStr will contain the modified string, while cmpStr will remain unchanged.<br>
+
+In std::string the function push_back will be called as such:<br>
+```cpp
+std::string str = "hello world";
+str.push_back('!');
+```
+Here str will be modified to contain "hello world!".<br>
+
+In compString the 'function' will be 'called' using the templated member type push_back:<br>
+```cpp
+Using cmpStr = decltype("hello world"_compStr);
+Using newCmpStr = cmpStr::push_back<'!'>;
+```
+Here newCmpStr will contain the modified string "hello world!", while cmpStr will remain unchanged.<br>
 
 compString has most of the functions of std::string.<br>
 The full list can be found at docs/compString.md<br>
@@ -40,9 +48,8 @@ For details see docs/compStringConv.md<br>
 
 
 ## getting a string as a value
-If you would like to convert a compString type to a value, you could get a std::string_view using the member values to_basic_string_view or the shorthand sv.<br>
-Then the std::string_view value can be used to convert to std::string or any other type.<br>
-The std::string_view value can be used during compile time and run time.<br>
+If you would like to convert a compString type to a value, you could get a constexpr std::string_view using the member values to_basic_string_view or the shorthand sv.<br>
+Then the std::string_view value can be used in compile time or runtime.<br>
 
 
 # Verbose static assert
@@ -53,25 +60,27 @@ Verbose static assert is a wrapper around static assert that accepts an expressi
 If the expression evaluates to false, a message will be generated based of the message template using compString and output the message with the compilers error message.<br>
 
 An example of this is a metafunction that checks if all types of a variadic template parameter pack are unique:<br>
-The type are_all_different<Ts...> takes a template parameter pack Ts. If all types in Ts are unique, then the member value bool value = true, otherwise false.<br>
-The type are_all_differant_VSA_message is an incomplete user defined type that will take the complete are_all_different type, extract the template parameter pack, and check for any duplicate types int it.<br>
+The type are_all_different<Ts...> takes a template parameter pack Ts. If all types in Ts are unique, then the member value bool 'value' == true, otherwise 'value' == false.<br>
+The type are_all_differant_VSA_message is a templated type that will check for any duplicate types int it.<br>
 If two types are the same, then the type and 0-indexed positions of the found types will be added to the error message.<br>
 
 So the code:<br>
+```cpp
+using y = are_all_differant<int,long int,int,char,float,double,char,double>;
+verbose_static_assert<y,are_all_differant_VSA_message>{};
+```
 
-using y = are_all_differant\<int,long int,int, char,float,double,char,double>;<br>
-verbose_static_assert\<y,are_all_differant_VSA_message>{};<br>
-
-Will out put a compiler error similar to:<br>
-
-...<br>
-error: static assertion failed:<br>
-Same types found:<br>
-found same type int at pos 0 and 2,<br> 
-found same type char at pos 3 and 6, <br>
-found same type double at pos 5 and 7, <br>
-found same type double at pos 5 and 8, <br>
-...<br>
+Will out put a compiler error:<br>
+```cpp
+...
+error: static assertion failed:
+Same types found:
+found same type int at pos 0 and 2,
+found same type char at pos 3 and 6, 
+found same type double at pos 5 and 7, 
+found same type double at pos 5 and 8, 
+...
+```
 
 This dynamic message is more helpful and useful than a static "found at least two equal types" message.<br>
 
