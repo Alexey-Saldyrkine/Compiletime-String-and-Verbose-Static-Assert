@@ -5,7 +5,7 @@ located in the namespace 'CompStringNS'.<br>
 
 A compString can be declared using the type of the user-defined literal _compStr.<br>
 Example:<br>
-```
+```cpp
 using str = decltype("hello world"_compStr); // 'str' is  a compString type containing the string "hello world"
 ```
 
@@ -18,7 +18,7 @@ As aliases are not mutable any 'function', that would modify std::string, instea
 compString::size -> size_t<br>
 Returns the length of the string compString contains. Type is size_t.<br>
 Example:<br>
-```
+```cpp
 constexpr size_t len = decltype("hello world"_compStr)::size; // len = 11
 ```
 
@@ -28,7 +28,7 @@ constexpr size_t len = decltype("hello world"_compStr)::size; // len = 11
 compString::at\<size_t pos> -> char<br>
 Returns the character at the postion pos of the string.<br>
 Example:<br>
-```
+```cpp
 constexpr char c = decltype("hello world"_compStr)::at<6>; // c = 'w'
 ```
 
@@ -37,7 +37,7 @@ compString::front -> char<br>
 Returns the first character of the string.<br>
 Equivalent to compString::at\<0>.<br>
 Example:<br>
-```
+```cpp
 constexpr char c = decltype("hello world"_compStr)::front; // c = 'h'
 ```
 
@@ -46,7 +46,9 @@ compString::back -> char<br>
 Returns the last character in the string.<br>
 Equivalent to compString::at\<compString::size-1>.<br>
 Example:<br>
-constexpr char c = decltype("hello world"_compStr)::back; // c = 'd'<br>
+```cpp
+constexpr char c = decltype("hello world"_compStr)::back; // c = 'd'
+```
 
 ### c_str
 const char* = compString::c_str
