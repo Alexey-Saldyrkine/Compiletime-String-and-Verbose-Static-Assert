@@ -15,7 +15,7 @@ CompString has most functions that [std::string](https://en.cppreference.com/w/c
 As aliases are not mutable any 'function', that would modify std::string, instead return the modified compString as a new type.<br>
 
 ## Size
-size_t = compString::size<br>
+compString::size -> size_t<br>
 Returns the length of the string compString contains. Type is size_t.<br>
 Example:<br>
 ```
