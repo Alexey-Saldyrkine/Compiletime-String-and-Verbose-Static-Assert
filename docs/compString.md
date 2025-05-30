@@ -1,13 +1,15 @@
-### Compiletime String
+# Compiletime String
 
 The type compsString is the type thats acts as a string,<br>
 located in the namespace 'CompStringNS'.<br>
 
-A compString is decleard using the type of the user-defiend literal _compStr.<br>
+A compString can be declared using the type of the user-defined literal _compStr.<br>
 Example:<br>
-using str = decltype("hello world"_compStr); // 'str' is  a compString type containing the string "hello world".<br>
+```
+using str = decltype("hello world"_compStr); // 'str' is  a compString type containing the string "hello world"
+```
 
-### member types / functions
+# member types / functions
 The member types of compString act as member functions 'returning' a type or value.
 CompString has most functions that [std::string](https://en.cppreference.com/w/cpp/string/basic_string) contains.<br>
 As aliases are not mutable any 'function', that would modify std::string, instead return the modified compString as a new type.<br>
@@ -16,7 +18,9 @@ As aliases are not mutable any 'function', that would modify std::string, instea
 size_t = compString::size<br>
 Returns the length of the string compString contains. Type is size_t.<br>
 Example:<br>
-constexpr size_t len = decltype("hello world"_compStr)::size; // len = 11<br>
+```
+constexpr size_t len = decltype("hello world"_compStr)::size; // len = 11
+```
 
 ## Element access
 
@@ -24,14 +28,18 @@ constexpr size_t len = decltype("hello world"_compStr)::size; // len = 11<br>
 char = compString::at\<size_t pos><br>
 Returns the character at the postion pos of the string.<br>
 Example:<br>
-constexpr char c = decltype("hello world"_compStr)::at<6>; // c = 'w'<br>
+```
+constexpr char c = decltype("hello world"_compStr)::at<6>; // c = 'w'
+```
 
 ### front
 char = compString::front<br>
 Returns the first character of the string.<br>
 Equivalent to compString::at\<0>.<br>
 Example:<br>
-constexpr char c = decltype("hello world"_compStr)::front; // c = 'h'<br>
+```
+constexpr char c = decltype("hello world"_compStr)::front; // c = 'h'
+```
 
 ### back
 char = compString::back\<br>
@@ -264,3 +272,11 @@ Example:<br>
   // replaceFunc will replace all 'l' with 'z'<br>
   using retStr = decltype("hello world"_compStr)::replace_with\<repalceFunc>; // resStr will contain "hezzo worzd"
 
+### reverse 
+A special case.<br>
+Unlike the rest of the functions, reverse is not a member type instead it is a separate templated type that accepts a compString type as a template parameter.<br>
+Reverse is named 'compStringReverse' and currently located in the namespace detail of compStringNS.<br>
+It contains a member type 'type' which is a compString type that will be reverse of the inputed compString.<br>
+Example:<br>
+Using typename Str = decltype("word"_compStr);
+Using typename rStr = typename detail::compStringReverse\<Str>::type; // rStr contains "drow"<br>
