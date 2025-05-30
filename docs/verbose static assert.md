@@ -26,9 +26,9 @@ flowchart TD
 	C --> D[End]
 	B -- false --> E[start creating the error message]
 	E --> F[create VSA_template_parameter_pack_data using the msgTranslator]
-	F -- using PPD = typename msgTranslator&lt;T&gt;::type--> G[create compString that contains the error message using msgTemplate]
-	G --> H[trigger static_assert with the created message]
-	H -- message outputted as a compiler error --> D[End]
+	F -- using PPD = typename msgTranslator&lt;T&gt;::type --> G[create compString that contains the error message using msgTemplate]
+	G -- using msg = typename msgtemplate&lt;PPD&gt;::type --> H[trigger static_assert with the created message]
+	H -- msg outputted as a compiler error --> D[End]
 ```
 
 
