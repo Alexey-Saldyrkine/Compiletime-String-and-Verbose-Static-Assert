@@ -136,7 +136,7 @@ using retStr = decltype("hello world"_compStr)::pop_back<>; // retStr contains "
 ```
 
 ### reverse
-compString::reverse/<> -> compString
+compString::reverse\<> -> compString
 Returns the reverse of compString.<br>
 Example:<br>
 ```cpp
@@ -208,67 +208,83 @@ constexpr size_t i = decltype("hello my world"_compStr)::find_last_not_of<declty
 ## Operations
 
 ### equal
-bool = compString::equal\<compString str><br>
+compString::equal\<compString str> -> bool<br>
 Checks wether compString is equal to str<br>
 Example:<br>
-constexpr bool b = decltype("hello"_compStr)::equal\<decltype("hello"_compStr)>; // b = true<br>
-constexpr bool b = decltype("hello"_compStr)::equal\<decltype("hello "_compStr)>; // b = false
+```cpp
+constexpr bool b = decltype("hello"_compStr)::equal<decltype("hello"_compStr)>; // b = true
+constexpr bool b = decltype("hello"_compStr)::equal<decltype("hello "_compStr)>; // b = false
+```
 
 ### lesser
-bool = compString::lesser\<compString str><br>
+compString::lesser\<compString str> -> bool<br>
 Checks wether compString is lesser than str.<br>
 Can use lesserEq for <=.<br>
 Example:<br>
-constexpr bool b = decltype("hello"_compStr)::lesser\<decltype("zzz"_compStr)>; // b = false<br>
-constexpr bool b = decltype("hello"_compStr)::lesser\<decltype("aaaaaa"_compStr)>; // b = true
+```cpp
+constexpr bool b = decltype("hello"_compStr)::lesser<decltype("zzz"_compStr)>; // b = false
+constexpr bool b = decltype("hello"_compStr)::lesser<decltype("aaaaaa"_compStr)>; // b = true
+```
 
 ### greater
-bool = compString::greater\<compString str><br>
+compString::greater\<compString str> -> bool<br>
 Checks wether compString is greater than str.<br>
 Can use greaterEq for >=.<br>
 Example:<br>
-constexpr bool b = decltype("hello"_compStr)::greater\<decltype("zzzzzz"_compStr)>; // b = false<br>
-constexpr bool b = decltype("hello"_compStr)::greater\<decltype("aaa"_compStr)>; // b = true
+```cpp
+constexpr bool b = decltype("hello"_compStr)::greater<decltype("zzzzzz"_compStr)>; // b = false
+constexpr bool b = decltype("hello"_compStr)::greater<decltype("aaa"_compStr)>; // b = true
+```
 
 ### compare
-int = compString::compare\<compString str><br>
+compString::compare\<compString str> -> int<br>
 Compares compString and str in lexicographical order from left to right.<br>
 If compString is greater than str, then it returns 1.<br>
 If compString is lesser than str, then it returns -1.<br>
 If compString is equal to str, then it returns 0.<br>
 Example:<br>
-constexpr int i = decltype("hello my world"_compStr)::compare\<decltype("hello our world"_compStr)>;// i = -1
+```cpp
+constexpr int i = decltype("hello my world"_compStr)::compare<decltype("hello our world"_compStr)>; // i = -1
+```
 
-int = compString::compare\<compString str, size_t pos1, size_t count1, size_t pos2, size_t count2><br>
+compString::compare\<compString str, size_t pos1, size_t count1, size_t pos2, size_t count2> -> int<br>
 Compares substring of compString in range \[pos1,pos1+count1] and substring of str in range \[pos2,pos2+count2].<br>
 
 ### starts_with
-bool = compString::starts_with\<compString str>
+compString::starts_with\<compString str> -> bool <br>
 Checks wether compString starts with the string str.<br>
 Example:<br>
-constexpr bool b = decltype("hello my world"_compStr)::starts_with\<decltype("hello"_compStr)>; // b = true
+```cp
+constexpr bool b = decltype("hello my world"_compStr)::starts_with<decltype("hello"_compStr)>; // b = true
+```
 
 ### ends_with
-bool = compString::ends_with\<compString str>
+compString::ends_with\<compString str> -> bool <br>
 Checks wether compString end with the string str.<br>
 Example:<br>
-constexpr bool b = decltype("hello my world"_compStr)::starts_ends\<decltype("word"_compStr)>; // b = false
+```cpp
+constexpr bool b = decltype("hello my world"_compStr)::starts_ends<decltype("word"_compStr)>; // b = false
+```
 
 ### substr
-compString = compString::substr\<size_t pos, size_t count><br>
+compString::substr\<size_t pos, size_t count> -> compString<br>
 Returns a compString that is the substr of compString in range \[pos,min(pos+count,compString::size)].<br>
 Example:<br>
-using retStr = decltype("hello my world"_compStr)::substr\<3,4>; // retStr contains "lo m"
+```cpp
+using retStr = decltype("hello my world"_compStr)::substr<3,4>; // retStr contains "lo m"
+```
 
 ### substrLR
-compString = compString::substr\<size_t pos1, size_t pos2><br>
+compString::substr\<size_t pos1, size_t pos2> -> compString<br>
 Returns a compString that is the substr of compString in range \[pos1,min(pos2,compString::size)].<br>
 Pos1 must be lesser than pos2.<br>
 Example:<br>
-using retStr = decltype("hello my world"_compStr)::substr\<3,8>; // retStr contains "lo my"
+```cpp
+using retStr = decltype("hello my world"_compStr)::substr<3,8>; // retStr contains "lo my"
+```
 
 ### erase_if
-compString = compString::erase_If\<typename pred>
+compString::erase_If\<typename pred> -> compString<br>
 pred is the predicate that determines wether, a character is erased.<br>
 pred must be default constructable and must have an operator().<br>
 A lambda can be used.<br>
@@ -282,14 +298,16 @@ Where the paramater char is the current character being considered.<br>
 Where the paramater size_t is the index of the current character being considered.<br>
 Where bool determines wether the character is deleted.<br>
 Example:<br>
-using pred= decltype( \[](char c)->bool{<br>
-  return c =='l';<br>
-});<br>
+```cpp
+using pred = decltype( [](char c)->bool{
+	return c =='l';
+});
 //pred will delete all 'l' in the string
-using retStr = decltype("hello world"_compStr)::erase_if\<pred>; // retStr contains "heo word"
+using retStr = decltype("hello world"_compStr)::erase_if<pred>; // retStr contains "heo word"
+```
 
 ### replace_if
-compString = compString::replace_if\<typename funcT>
+compString::replace_if\<typename funcT> -> compString<br>
 funcT is a functor type that will return the value that the current character will be replaced with.<br>
 funcT must be default constructable and must have an operator().<br>
 A lambda can be used.<br>
@@ -303,20 +321,13 @@ Where the paramater char is the current character being considered.<br>
 Where the paramater size_t is the index of the current character being considered.<br>
 Where return char determines with what character the current character is replaced with.<br>
 Example:<br>
- using replaceFunc = decltype( \[](char c)->char{<br>
- if(c == 'l')<br>
-   return 'z';<br>
-  else<br>
-    return c;<br>
-  });<br>
-  // replaceFunc will replace all 'l' with 'z'<br>
-  using retStr = decltype("hello world"_compStr)::replace_with\<repalceFunc>; // resStr will contain "hezzo worzd"
-
-### reverse 
-A special case.<br>
-Unlike the rest of the functions, reverse is not a member type instead it is a separate templated type that accepts a compString type as a template parameter.<br>
-Reverse is named 'compStringReverse' and currently located in the namespace detail of compStringNS.<br>
-It contains a member type 'type' which is a compString type that will be reverse of the inputed compString.<br>
-Example:<br>
-Using typename Str = decltype("word"_compStr);
-Using typename rStr = typename detail::compStringReverse\<Str>::type; // rStr contains "drow"<br>
+```cpp
+using replaceFunc = decltype( [](char c)->char{
+	if(c == 'l')
+		return 'z';
+	else
+		return c;
+});
+// replaceFunc will replace all 'l' with 'z'<br>
+using retStr = decltype("hello world"_compStr)::replace_with<repalceFunc>; // retStr will contain "hezzo worzd"
+```
