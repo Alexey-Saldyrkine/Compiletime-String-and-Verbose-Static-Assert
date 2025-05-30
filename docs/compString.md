@@ -25,7 +25,7 @@ constexpr size_t len = decltype("hello world"_compStr)::size; // len = 11
 ## Element access
 
 ### at 
-char = compString::at\<size_t pos><br>
+compString::at\<size_t pos> -> char<br>
 Returns the character at the postion pos of the string.<br>
 Example:<br>
 ```
@@ -33,7 +33,7 @@ constexpr char c = decltype("hello world"_compStr)::at<6>; // c = 'w'
 ```
 
 ### front
-char = compString::front<br>
+compString::front -> char<br>
 Returns the first character of the string.<br>
 Equivalent to compString::at\<0>.<br>
 Example:<br>
@@ -42,7 +42,7 @@ constexpr char c = decltype("hello world"_compStr)::front; // c = 'h'
 ```
 
 ### back
-char = compString::back\<br>
+compString::back -> char<br>
 Returns the last character in the string.<br>
 Equivalent to compString::at\<compString::size-1>.<br>
 Example:<br>
