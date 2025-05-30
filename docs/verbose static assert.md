@@ -79,7 +79,7 @@ Then using the data from it, it will create a member type 'msg' that is a compSt
 Example:<br>
 Continuing our example from before. Lets say that for the type MpFunc\<typename T, bool A, typename... Us> we want to create an error message based on the following rules:<br>
 - if bool A is true, then no types in Us can be the same as T, the indexes of the offending types will be outputted 
-- if bool A is false, then no types in Us can be different from T, the indexes of the offending types will be outputted 
+- if bool A is false, then no types in Us can be different from T, the indexes and names of the offending types will be outputted 
 
 ```cpp
 //A helper type the will be called recursively to iterate over the types of Us and generate the error message
@@ -146,6 +146,47 @@ struct MpFunc_VSA_message{
 	
 	using msg = typename MpFunc_VSA_message_impl<T,2,decltype(f())>::type; // call the recursive type MpFunc_VSA_message_impl to generate the error message
 };
+```
+
+### VSA use example
+
+Lets define the type MpFunc<br>
+```cpp
+template<typename T, bool A, typename... Us>
+struct MpFunc{
+	// here would be the evaluation of value to true or false based on the template parameters 
+	// for simplicity it is set to false, to always trigger the failure on the static assert
+	static constexpr bool value = false; 
+};
+```
+
+
+Now, if we call verbose static assert as such:<br>
+```cpp
+using for_VSA_a = MpFunc<int,1,bool,char,int,long int, double,int,int,char,int>;
+verbose_static_assert<for_VSA_a, MpFunc_VSA_message, translaterT>{}; // instantiation of verbose_static_assert, effectively, calls static_assert
+```
+We will get the following compilation error:<br>
+```cpp
+error: static assertion failed: 
+found types that are equal to the type 'int' at pos:
+4, 7, 8, 10, 
+```
+
+Or if we call is with bool A set to false:<br>
+```cpp
+using for_VSA_b = MpFunc<int,0,bool,char,int,long int, double,int,int,char,int>;
+verbose_static_assert<for_VSA_b,MpFunc_VSA_message,translaterT>{};
+```
+We will get the following compilation error:<br>
+```cpp
+error: static assertion failed: 
+found types that are differnt from the type 'int':
+the type 'bool' at pos: 2
+the type 'char' at pos: 3
+the type 'long int' at pos: 5
+the type 'double' at pos: 6
+the type 'char' at pos: 9
 ```
 
 
