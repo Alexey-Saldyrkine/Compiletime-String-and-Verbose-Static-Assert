@@ -42,8 +42,8 @@ The job of the message translator is to take the type T, extract its template pa
 VSA_template_parameter_pack_data\<typeList,containerT> requires two template parameters:
 - typeList must be a verbose_static_assertNS::detail::mp_list, which contains the template parameters of T, 
 any parameter that is a value must be converted to a type using the type verbose_static_assertNS::detail::valueAsType.
-All template parameters must be in the same order as the are in T<br>
-- containerT is a the template type of T. As containerT is somewhat optional, as their is no generic way to pass a template template parameter, so containerT can be a the type T itself, or a complete type of the template T with specific parameters, or any other complete type, such as void. What containerT will be is dependent on the context of where the translator will be used.<br>
+All template parameters must be in the same order as the are in T.<br>
+- containerT is a the template type of T. containerT is somewhat optional, as their is no generic way to pass a template template parameter, so containerT can be a the type T itself, or a complete type of the template T with specific parameters, or any other complete type, such as void. What containerT will be is dependent on the context of where the translator will be used.<br>
 
 
 Inside the namespace verbose_static_assertNS there are two basic translators:<br>
@@ -71,6 +71,8 @@ struct translaterT<container<T,A,Us...>>{
 	//container type
 	//here we pass the type container with some arbitrary parameters.
 	using contT = container<void,0>;
+	//As we don't intend to use conT in the latter examples we, could have contT be:
+	// using contT = void;
 
 	//create the final VSA_template_parameter_pack_data type
 	using type = verbose_static_assertNS::VSA_template_parameter_pack_data<list,contT>;
