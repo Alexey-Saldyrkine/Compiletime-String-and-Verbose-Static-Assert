@@ -71,7 +71,7 @@ struct translaterT<container<T,A,Us...>>{
 	//container type
 	//here we pass the type container with some arbitrary parameters.
 	using contT = container<void,0>;
-	//As we don't intend to use conT in the latter examples we, could have contT be:
+	//As we don't intend to use contT in the latter examples, we could have contT be:
 	// using contT = void;
 
 	//create the final VSA_template_parameter_pack_data type
@@ -222,6 +222,6 @@ the type 'char' at pos: 9
 ## steps of assertion
 1. Upon the instantiation of verbose_static_assert, the value of T::value is evaluated.
 2. If the value of T::value is true, then the instantiation of verbose_static_assert is finished, no compiler error occurs.
-3. Else, the compString type msgTemplate<typename msgTranslater<T>::type>::msg is evaluated and the compiler error 'static assert failed' occurs with the generated compString as the message.
+3. Else, the compString type msgTemplate\<typename msgTranslator\<T>::type>::msg is evaluated and the compiler error 'static assert failed' occurs with the generated compString as the message.
 
 
