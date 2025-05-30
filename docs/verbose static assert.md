@@ -48,11 +48,11 @@ struct translaterT<container<T,A,Us...>>{
 	// and that all parameters in mp_list are in the same order as MpFunc
 	
 	//container type
-	//here we pass the type container will some arbitrary values.
+	//here we pass the type container with some arbitrary parameters.
 	using contT = container<void,0>;
 
 	//create the final VSA_template_parameter_pack_data type
-	using type = verbose_static_assertNS::VSA_template_parameter_pack_data<list,contT>
+	using type = verbose_static_assertNS::VSA_template_parameter_pack_data<list,contT>;
 };
 ```
 
@@ -81,12 +81,72 @@ Continuing our example from before. Lets say that for the type MpFunc\<typename 
 - if bool A is true, then no types in Us can be the same as T, the indexes of the offending types will be outputted 
 - if bool A is false, then no types in Us can be different from T, the indexes of the offending types will be outputted 
 
+```cpp
+//A helper type the will be called recursively to iterate over the types of Us and generate the error message
+template<typename T, size_t i, typename msg>
+// Here T is the VSA_template_parameter_pack_data, i is the index of the current tested type, and msg is the previous part of the message that we will append to
+struct MpFunc_VSA_message_impl{
+    static constexpr auto f(){
+        // Here we will break recursion after we went through all the types
+        if constexpr (T::size <= i){
+            //went through all types, finish message,
+            //depending on bool A appen an endline symbol to the end
+            if constexpr(T::template valueAt<1> == 1){
+                using retMsg = typename msg::template append<decltype("\n"_compStr)>;// adding "/n" to the end of message
+                return retMsg{};
+            }else{
+                return msg{}; // returning message as is
+            }
+        }else{
+            // testing type at i
+            constexpr bool A = T::template valueAt<1>; // value of bool A
+            using baseT = typename T::template typeAt<0>; // type T
+            using otherT = typename T::template typeAt<i>; // type Us[i]
+            // if A == true and T == Us[i], then upadate the message
+            if constexpr(A&&std::is_same_v<baseT,otherT>){ 
+                using addOnMessage = typename valueToCompString<i>::type::template append<decltype(", "_compStr)>; // string to add to message
+                using retMsg = typename msg::template append<addOnMessage>; // appending 
+                return typename MpFunc_VSA_message_impl<T,i+1,retMsg>::type{}; // recursive call, with the updated message
+            }else
+            // if A == false and T != Us[i], then update the message
+            if constexpr((!A)&&(!std::is_same_v<baseT,otherT>)){
+                using addOnMessage = typename decltype("the type '"_compStr)
+                ::template append<typename T::template typeStringAt<i>>
+                ::template append<decltype("' at pos: "_compStr)>
+                ::template append<typename valueToCompString<i>::type>
+                ::template append<decltype("\n"_compStr)>; // string to add to message
+                using retMsg = typename msg::template append<addOnMessage>;
+                return typename MpFunc_VSA_message_impl<T,i+1,retMsg>::type{};// recursive call, with the updated message
+            }else{
+                // no error state achived, so move on to the next type, with message unchanged 
+                return typename MpFunc_VSA_message_impl<T,i+1,msg>::type{};// recursive call, with the mesage as is
+            }
+        }
+    };
+    using type = decltype(f()); // return type of f() is a compString containing the message
+};
+
 //the message template type
-template\<typename T>
-struct MpFunc_VSA_message{<br>
-
-}<br> 
-
+template<typename T>
+struct MpFunc_VSA_message{
+    // depending on bool A, the message will be began differently 
+	static constexpr auto f(){
+		if constexpr(T::template valueAt<1> == 1){
+			using retMsg = typename decltype("\nfound types that are equal to the type '"_compStr)	
+					::template append<typename T::template typeStringAt<0> >
+					::template append<decltype("' at pos:\n"_compStr)>;
+			return retMsg{}; // bool A == true
+		}else{
+			using retMsg = typename decltype("\nfound types that are differnt from the type '"_compStr)	
+					::template append<typename T::template typeStringAt<0> >
+					::template append<decltype("':\n"_compStr)>;
+			return retMsg{}; // bool A == false
+		}
+	}
+	
+	using msg = typename MpFunc_VSA_message_impl<T,2,decltype(f())>::type; // call the recursive type MpFunc_VSA_message_impl to generate the error message
+};
+```
 
 
 
