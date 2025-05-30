@@ -34,7 +34,7 @@ The default translator is VSA_translate_with_only_types<br>
 Example:<br>
 Lets say we have a type MpFunc\<typename T, bool A, typename... Us>, and we want to create a translator for it.<br>
 
-```
+```cpp
 //start with a base template that we will specialize
 template<typename>
 struct translaterT;
