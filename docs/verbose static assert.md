@@ -1,5 +1,7 @@
 # Verbose Static Assert
 
+With cpp++26 static_assert can now output user-generated error messages.(see [static_assert(3)](https://en.cppreference.com/w/cpp/language/static_assert.html))
+
 The idea behind verbose static assert is to give the ability for programmers to create custom dynamic compile time error messages for their templated types.<br>
 Having such error messages can be very useful for programmers that will be using the created types, allowing them to easily see what conditions lead to a compiler error.<br>
 While it is mainly intended for metaprogramming, it can be used in any
