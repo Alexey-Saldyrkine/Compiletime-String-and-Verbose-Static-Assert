@@ -4,6 +4,7 @@ The idea behind verbose static assert is to give the ability for programmers to 
 Having such error messages can be very useful for programmers that will be using the created types, allowing them to easily see what conditions lead to a compiler error.<br>
 While it is mainly intended for metaprogramming, it can be used in any
 
+## general overview
 
 Verbose Static Assert is a wrapper type around static assert.<br>
 Verbose Static Assert takes three types as template Arguments:<br>
@@ -16,6 +17,20 @@ Requirements for template parameters:<br>
 - typename T must have a member value, of a type that can be implicitly converted to bool, named 'value'.<br>
 - msgTemplate must have a member type name 'msg' that is a compString type containing the generated error message.<br> 
 - msgTranslator must have a member type named 'type' that is a verbose_static_assertNS::VSA_template_parameter_pack_data constructed from T.<br>
+
+### verbose static assert flow chart
+```mermaid
+flowchart TD
+	A[VSA instantiation] --> B{ evaluate T::value }
+	B -- true --> C[no error occurs]
+	C --> D[End]
+	B -- false --> E[start creating the error message]
+	E --> F[create VSA_template_parameter_pack_data using the msgTranslator]
+	F --> G[create compString that contains the error message using msgTemplate]
+	G --> H[trigger static_assert with the created message]
+	H -- message outputted as a compiler error --> D[End]
+```
+
 
 
 ### msgTranslator
