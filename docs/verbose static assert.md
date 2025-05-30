@@ -12,9 +12,10 @@ While it is mainly intended for metaprogramming, it can be used in any compile t
 Verbose Static Assert is a wrapper type around static assert.<br>
 Verbose Static Assert takes three types as template Arguments:<br>
 verbose_static_assert\<typename T, template\<typename> typename msgTemplate, tempalte\<typename> typename msgTranslator><br>
-Where typename T is a metaprogramming function that is being asserted.<br>
-Where msgTemplate is an incomplete templated type that serves as the instructions to create an error message based on T.<br>
-Where msgTranslator is an incomplete templated type that will transform the template parameters for T into a verbose_static_assertNS::VSA_template_parameter_pack_data.<br>
+
+- Where typename T is a metaprogramming function that is being asserted.<br>
+- Where msgTemplate is an incomplete templated type that serves as the instructions to create an error message based on T.<br>
+- Where msgTranslator is an incomplete templated type that will transform the template parameters for T into a verbose_static_assertNS::VSA_template_parameter_pack_data.<br>
 
 Requirements for template parameters:<br>
 - typename T must have a member value, of a type that can be implicitly converted to bool, named 'value'.<br>
