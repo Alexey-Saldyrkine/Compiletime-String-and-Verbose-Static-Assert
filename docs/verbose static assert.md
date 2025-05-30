@@ -154,9 +154,10 @@ Lets define the type MpFunc<br>
 ```cpp
 template<typename T, bool A, typename... Us>
 struct MpFunc{
-	// here would be the evaluation of value to true or false based on the template parameters 
+	// here would be the evaluation of 'value' to true or false based on the template parameters 
 	// for simplicity it is set to false, to always trigger the failure on the static assert
 	static constexpr bool value = false; 
+	// if 'value' were to be true, then no error would occur 
 };
 ```
 
@@ -168,9 +169,11 @@ verbose_static_assert<for_VSA_a, MpFunc_VSA_message, translaterT>{}; // instanti
 ```
 We will get the following compilation error:<br>
 ```cpp
+...
 error: static assertion failed: 
 found types that are equal to the type 'int' at pos:
 4, 7, 8, 10, 
+...
 ```
 
 Or if we call is with bool A set to false:<br>
@@ -180,6 +183,7 @@ verbose_static_assert<for_VSA_b,MpFunc_VSA_message,translaterT>{};
 ```
 We will get the following compilation error:<br>
 ```cpp
+...
 error: static assertion failed: 
 found types that are differnt from the type 'int':
 the type 'bool' at pos: 2
@@ -187,6 +191,7 @@ the type 'char' at pos: 3
 the type 'long int' at pos: 5
 the type 'double' at pos: 6
 the type 'char' at pos: 9
+...
 ```
 
 
