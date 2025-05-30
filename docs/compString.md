@@ -79,16 +79,20 @@ Same as to_basic_string_view.<br>
 __NOTE:__ these functions do __NOT__ change the compString that calls them, but return a new compString that __IS__ modified.<br>
 
 ### append
-compString = compString::append\<compString str><br>
+compString::append\<compString str> -> compString<br>
 Returns a compString with str appended to the end of the compString.<br>
 Example:<br>
+```cpp
 using retStr = decltype("AA"_compStr)::append\<decltype("BB"_compStr)>; // retStr contains "AABB"
+```
 
 ### prepend
-compString = compString::prepend\<compString str><br>
+compString::prepend\<compString str> -> compString<br>
 Returns a compString with str prepended to the begginning of the compString.<br>
 Example:<br>
+```cpp
 using retStr = decltype("AA"_compStr)::prepend\<decltype("BB"_compStr)>; // retStr contains "BBAA"
+```
 
 ### clear
 compString = compString::clear<br>
