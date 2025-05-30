@@ -51,28 +51,32 @@ constexpr char c = decltype("hello world"_compStr)::back; // c = 'd'
 ```
 
 ### c_str
-const char* = compString::c_str
+compString::c_str -> const char*<br>
 Return a const char* to a null terminated array of characters of length compString::size+1, that represents the string.<br>
 Example:<br>
-const char* strP =  decltype("hello world"_compStr)::c_str;<br>
-std::string str(strP); // str will be constructed and contain "hello world"<br>
+```cpp
+const char* strP =  decltype("hello world"_compStr)::c_str;
+std::string str(strP); // str will be constructed and contain "hello world"
+```
 
 ### data
-const char* = compString::data<br>
+compString::data -> const char* <br>
 Same as c_str.<br>
 
 ### to_basic_string_view
-const std::basic_string_view = compString::to_basic_string_view<br>
+compString::to_basic_string_view -> constexpr std::basic_string_view<br>
 Returns a basic string view of the string.<br>
 Example:<br>
+```cpp
 constexpr std::basic_string_view strView = decltype("hello world"_compStr)::to_basic_string_view; // strView will contain "hello world"
+```
 
 ### sv
-const std::basic_string_view = compString::sv<br>
+compString::sv -> constexpr std::basic_string_view<br>
 Same as to_basic_string_view.<br>
 
 ## Modifiers
-__NOTE:__ these functions do __not__ change the compString that calls them, but return a new compString that __is__ modified.<br>
+__NOTE:__ these functions do __NOT__ change the compString that calls them, but return a new compString that __IS__ modified.<br>
 
 ### append
 compString = compString::append\<compString str><br>
