@@ -17,7 +17,7 @@ Currently value to compString supports conversion of values that are one of the 
 - integrals
 - null terminated char arrays
 
-valueToCompString can be manually extended to cover other types.<br>
+valueToCompString can be manually extended to convert other types.<br>
 
 ### bool
 A value of type bool (true, false) will be converted to a compString containing "true" and "false" respectively.<br>
@@ -62,3 +62,18 @@ constexpr auto sptr  = charArrayToType<ptr,5>::type::sv;
 static_assert(sptr == "elvis"sv); // no error occurs
 ```
 
+### extending conversion to other types 
+To extend valueToCompString conversion for a value of type T, you will need to create a template specialization of valueToCompStringInter within the namespace compStringNS::compStringConvNS.<br>
+Example:<br>
+```cpp
+using T = sometype; // T can be any type. T is can be removed and replaced by sometype
+namespace compStringNS{
+namespace compStringConvNS{ //tempalte specializations need to be in the same namespace as the base tempalte 
+	template<T value>
+	struct valueToCompStringInter<T,val>{ // here we specialize with two parameters: first is the type T, second is a value of type T
+		using type = typename someTypeToCompString_Impl<val>::type; // here will be the implementation of the conversion
+		// member type 'type' must be present and be of a compString type
+	};
+}
+}
+```
