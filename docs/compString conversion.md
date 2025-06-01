@@ -78,3 +78,9 @@ namespace compStringConvNS{ //tempalte specializations need to be in the same na
 }
 ```
 
+### If no conversion exists
+If no conversion for a value of type T exists, the compString "[no value to compString conversion for the type 'T']" will be returned.<br>
+Where T will be the result of typeToCompString\<T>.<br>
+
+## type To compString 
+
