@@ -1,7 +1,7 @@
 #include <string_view>
 #include <iostream>
 #include <type_traits>
-
+#include <utility>
 
 
 namespace compStringNS{
@@ -318,7 +318,8 @@ struct compString<detail::tstring<c...>> {
     using erase = typename substrLR<0,pos>::append<substrLR<ctMin<pos+count+1,size>,size>>;
     template<char chr>
     using push_back = append<compString<tstring<chr>>>;
-    using pop_back = substrLR<0,size-2>;
+    template<size_t i = 0>
+    using pop_back = substrLR<i,size-2>;
     template<size_t pos, size_t count, typename str>
     using replace = typename erase<pos,count>::insert<pos,str>;
     //search
@@ -360,14 +361,8 @@ struct compString<detail::tstring<c...>> {
     using erase_if = typename erase_ifImpl<0,thisStr,pred>::type;
     template<typename replaceFunc>
     using replace_if = typename replace_ifImpl<0,thisStr,replaceFunc>::type;
-
-    static constexpr size_t sizeInterm = size;
-    struct out{
-        const char * data = str;
-        size_t size = sizeInterm;
-    };
-
-    static constexpr out outobj = out{};
+    template<typename str = thisStr>
+    using reverse = compStringReverse<str>::type;
 };
 
 template <typename T, T... chars>
@@ -380,59 +375,386 @@ constexpr compString<detail::tstring<chars...>> operator""_compStr() {
 namespace compStringNS{
 namespace compStringConvNS{
 
+template<typename T>
+struct typeToCompString;
 
-
-
+namespace detail{
 
 template<typename T>
-struct typeToCompStringInter{
-    using type = decltype("[no name given to type]"_compStr);
-};
-
-template<>
-struct typeToCompStringInter<int>{
-    using type = decltype("int"_compStr);
-};
-
-#define createTypeNameDefinition(x) template<> struct typeToCompStringInter<x>{ using type = decltype(#x ""_compStr);};
-
-createTypeNameDefinition(char);
-createTypeNameDefinition(unsigned int);
-createTypeNameDefinition(long int);
-createTypeNameDefinition(unsigned long int);
-createTypeNameDefinition(long long int);
-createTypeNameDefinition(unsigned long long int);
-createTypeNameDefinition(float);
-createTypeNameDefinition(double);
-
-
-
-template<typename T>
-struct typeToCompString{
+struct typeToCompString_cv{
     static constexpr auto f(){
-        using t = std::remove_cv<T>::type;
         if constexpr(std::is_const_v<T> && std::is_volatile_v<T>){
-            return typename decltype("const volatile "_compStr)::append<typename typeToCompStringInter<t>::type>{};
+            return decltype("const volatile"_compStr){};
         }else
         if constexpr(std::is_volatile_v<T>){
-            return typename decltype("volatile "_compStr)::append<typename typeToCompStringInter<t>::type>{};
+            return decltype("volatile"_compStr){};
         }else
         if constexpr(std::is_const_v<T>){
-            return typename decltype("const "_compStr)::append<typename typeToCompStringInter<t>::type>{};
+            return decltype("const"_compStr){};
         }else{
-            return typename typeToCompStringInter<t>::type{};
+            return decltype(""_compStr){};
+        }
+    }
+
+    using type = decltype(f());
+};
+
+template<typename msg,typename T, typename... Ts>
+struct typesToStringComma{
+    static constexpr auto f(){  
+        using str = typename typeToCompString<T>::type;
+        using newMsg = typename msg::template append<str>;
+        if constexpr(sizeof...(Ts) != 0){
+            using retMsg = typename newMsg::template append<decltype(","_compStr)>;
+            return typename typesToStringComma<retMsg,Ts...>::type{};
+        }else{
+            return newMsg{};
+        }
+    }
+
+    using type = decltype(f());
+};
+
+template<typename R, typename... Args>
+struct functionBase{
+    static constexpr auto f(){
+        using lHalf = typename typeToCompString<R>::type::template append<decltype("("_compStr)>;
+        if constexpr(sizeof...(Args) == 0){
+            return typename lHalf::template append<decltype(")"_compStr)>{};
+        }else{
+            using argsStr = typename typesToStringComma<decltype(""_compStr),Args...>::type;
+            return typename lHalf::template append<argsStr>::template append<decltype(")"_compStr)>{};
         }
     }
     using type = decltype(f());
 };
 
+template<typename T>
+struct functionBaseToVariadic{
+    using type = typename T::template pop_back<>::template append<decltype("...)"_compStr)>;
+};
 
-template<typename T, auto val>
-struct valueToCompStringInter{
-    using type = decltype("[no name given to value]"_compStr);
+template<typename T>
+struct typeToCompString_function_type;
+
+
+// basic function cv
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...)>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) const>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype(" const"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) volatile>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype(" volatile"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) const volatile>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype(" const volatile"_compStr)>;
+};
+
+// basic function ref
+// &
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) &>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype("&"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) const &>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype(" const&"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) volatile &>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype(" volatile&"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) const volatile &>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype(" const volatile&"_compStr)>;
+};
+// &&
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) &&>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype("&&"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) const &&>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype(" const&&"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) volatile&&>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype(" volatile&&"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) const volatile&&>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype(" const volatile&&"_compStr)>;
+};
+
+// all above but variadic function
+
+// basic function cv
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......)>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) const>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype(" const"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) volatile>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype(" volatile"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) const volatile>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype(" const volatile"_compStr)>;
+};
+
+// basic function ref
+// &
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) &>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype("&"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) const &>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype(" const&"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) volatile &>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype(" volatile&"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) const volatile &>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype(" const volatile&"_compStr)>;
+};
+// &&
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) &&>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype("&&"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) const &&>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype(" const&&"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) volatile&&>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype(" volatile&&"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) const volatile&&>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype(" const volatile&&"_compStr)>;
 };
 
 
+// all above but noexcept
+// basic function cv
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) noexcept>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype(" noexcept"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) const noexcept>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype(" const noexcept"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) volatile noexcept>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype(" volatile noexcept"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) const volatile noexcept>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype(" const volatile noexcept"_compStr)>;
+};
+
+// basic function ref
+// &
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) & noexcept>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype("& noexcept"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) const & noexcept>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype(" const& noexcept"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) volatile & noexcept>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype(" volatile& noexcept"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) const volatile & noexcept>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype(" const volatile& noexcept"_compStr)>;
+};
+// &&
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) && noexcept>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype("&& noexcept"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) const && noexcept>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype(" const&& noexcept"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) volatile&& noexcept>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype(" volatile&& noexcept"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args...) const volatile&& noexcept>{
+    using base = typename functionBase<Ret,Args...>::type;
+    using type = base::template append<decltype(" const volatile&& noexcept"_compStr)>;
+};
+
+// all above but variadic function
+
+// basic function cv
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) noexcept>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype(" noexcept"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) const noexcept>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype(" const noexcept"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) volatile noexcept>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype(" volatile noexcept"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) const volatile noexcept>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype(" const volatile noexcept"_compStr)>;
+};
+
+// basic function ref
+// &
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) & noexcept>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype("& noexcept"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) const & noexcept>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype(" const& noexcept"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) volatile & noexcept>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype(" volatile& noexcept"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) const volatile & noexcept>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype(" const volatile& noexcept"_compStr)>;
+};
+// &&
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) && noexcept>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype("&& noexcept"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) const && noexcept>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype(" const&& noexcept"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) volatile&& noexcept>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype(" volatile&& noexcept"_compStr)>;
+};
+
+template<typename Ret, typename... Args>
+struct typeToCompString_function_type<Ret(Args......) const volatile&& noexcept>{
+    using base = typename functionBaseToVariadic<typename functionBase<Ret,Args...>::type>::type;
+    using type = base::template append<decltype(" const volatile&& noexcept"_compStr)>;
+};
+
+template<typename T>
+struct pointerToFunction_type{
+    using funcStr = typename typeToCompString_function_type<T>::type;
+    static constexpr size_t pos = funcStr::template find<decltype("("_compStr)>;
+    //using type = funcStr;
+    using type = typename funcStr::template insert<pos-1,decltype("(*)"_compStr)>;
+};
 
 template<typename T, T val,typename str>
 struct integerValToCompString{
@@ -456,44 +778,14 @@ struct integerValToCompStringInterm{
     static constexpr auto f(){
         if constexpr(val >=0){
             using t = typename integerValToCompString<T,val,decltype(""_compStr)>::type;
-            return typename detail::compStringReverse<t>::type{};
+            return typename compStringNS::detail::compStringReverse<t>::type{};
         }else{
             using t = typename integerValToCompString<T,-val,decltype(""_compStr)>::type;
-            return typename detail::compStringReverse<t>::type::template prepend<decltype("-"_compStr)>{};
+            return typename compStringNS::detail::compStringReverse<t>::type::template prepend<decltype("-"_compStr)>{};
         }
     }
     
     
-    using type = decltype(f());
-};
-
-
-template<auto val>
-struct valueToCompString{
-    static constexpr auto f(){
-        using T = decltype(val);
-        if constexpr(std::is_integral_v<T>){
-            return typename integerValToCompStringInterm<val>::type{};
-        }else{
-            return typename valueToCompStringInter<decltype(val),val>::type{};
-        }
-    }
-    using type = decltype(f());   
-};
-
-
-
-template<typename T,size_t i, size_t size,const char* buf>
-struct charArrayToType{
-    static constexpr auto f(){
-        if constexpr(i<size){
-            using t = typename T::template push_back<*(buf+i)>;
-            return typename charArrayToType<t,i+1,size,buf>::type{};
-        }else{
-            return T{};
-        }
-    }
-
     using type = decltype(f());
 };
 
@@ -504,31 +796,179 @@ constexpr size_t getCstrLength(){
     return ret;
 }
 
-template<const char* buf >
-struct valueToCompStringInter<const char*,buf>{
-    using type = charArrayToType<decltype(""_compStr),0,getCstrLength<buf>(),buf>::type;
+
+
+}
+
+
+
+template<typename T>
+struct typeToCompStringInter{
+    using type = decltype("[no name given to type]"_compStr);
+};
+
+#define createTypeDefinition(x) template<> struct typeToCompStringInter<x>{ using type = decltype(#x ""_compStr);};
+
+createTypeDefinition(void);
+createTypeDefinition(bool);
+createTypeDefinition(char);
+createTypeDefinition(signed char);
+createTypeDefinition(unsigned char);
+createTypeDefinition(short int);
+createTypeDefinition(unsigned short int);
+createTypeDefinition(int);
+createTypeDefinition(unsigned int);
+createTypeDefinition(long int);
+createTypeDefinition(unsigned long int);
+createTypeDefinition(long long int);
+createTypeDefinition(unsigned long long int);
+createTypeDefinition(float);
+createTypeDefinition(double);
+createTypeDefinition(long double);
+
+
+
+
+template<typename T>
+struct typeToCompString{
+    // steps to decompose a type:
+    // 0. is function type (cuase ftypes are special)
+    // 1. check refrences (noexcept for functions)
+    // 2. check cv
+    // 3. check pointer
+    // if not base type, the repeat
+    // now T will be a base type of some kind
+    static constexpr auto f(){
+           if constexpr(std::is_function_v<T>){
+                return typename detail::typeToCompString_function_type<T>::type{};
+           }else
+           if constexpr(std::is_reference_v<T>){
+                using t = std::remove_reference_t<T>;
+                if constexpr(std::is_pointer_v<t> && std::is_function_v<std::remove_pointer_t<t>>){
+                    using funcPtrType = typename typeToCompString<t>::type;
+                    static constexpr size_t pos = funcPtrType::template find<decltype(")"_compStr)> -1;
+                    if constexpr(std::is_lvalue_reference_v<T>){
+                        return typename funcPtrType::template insert<pos,decltype("&"_compStr)>{};
+                    }else{
+                        return typename funcPtrType::template insert<pos,decltype("&&"_compStr)>{};
+                    }
+                }else
+                if constexpr(std::is_lvalue_reference_v<T>){
+                    return typename typeToCompString<t>::type::template append<decltype("&"_compStr)>{};
+                }else{
+                    return typename typeToCompString<t>::type::template append<decltype("&&"_compStr)>{};
+                }
+           }else
+           if constexpr(std::is_const_v<T> || std::is_volatile_v<T>){
+                using cvStr = typename detail::typeToCompString_cv<T>::type;
+                using t = std::remove_cv_t<T>;
+                if constexpr(std::is_pointer_v<T> && std::is_function_v<std::remove_pointer_t<T>>){
+                    using cvNotAddedT = typename typeToCompString<t>::type;
+                    using cvStr = typename detail::typeToCompString_cv<T>::type::template prepend<decltype(" "_compStr)>;
+                    static constexpr size_t pos = cvNotAddedT::template find<decltype("*"_compStr)>;
+                    using retStr = typename cvNotAddedT::template insert<pos,cvStr>;
+                    return retStr{};
+                }else
+                if constexpr(std::is_pointer_v<T>){
+                    return typename typeToCompString<t>::type::template append<decltype(" "_compStr)>::template append<cvStr>{};
+                }else{
+                    using retStr =  cvStr::template append<decltype(" "_compStr)>::template append<typename typeToCompString<t>::type>;
+                    return retStr{};
+                }
+           }else
+           if constexpr(std::is_pointer_v<T>){
+                using t = std::remove_pointer_t<T>;
+                if constexpr(std::is_function_v<t>){
+                    return typename detail::pointerToFunction_type<t>::type{};
+                }else{
+                    return typename typeToCompString<t>::type::template append<decltype("*"_compStr)>{};
+                }
+           }else{
+                // base types
+                if constexpr(std::is_function_v<T>){
+                    // function types
+                    return typename detail::typeToCompString_function_type<T>::type{};
+                }else{
+                    // fundamental and class types
+                    return typename typeToCompStringInter<T>::type{};
+                }
+           }
+    }
+    using type = decltype(f());
+};
+
+
+template<typename T, auto val>
+struct valueToCompStringInter{
+    using type = decltype("[no value to compString conversion for the type '"_compStr)::append<typename typeToCompString<T>::type>::template append<decltype("']"_compStr)>;
 };
 
 
 
+template<auto val>
+struct valueToCompString{
+    static constexpr auto f(){
+        using T = decltype(val);
+        if constexpr(std::is_same_v<bool,std::remove_cv_t<T>>){
+            if constexpr(val == true){
+                return decltype("true"_compStr){};
+            }else{
+                return decltype("false"_compStr){};
+            }
+        }else
+        if constexpr(std::is_same_v<char,std::remove_cv_t<T>>){
+            return compString<compStringNS::detail::tstring<val>>{};
+        }else
+        if constexpr(std::is_integral_v<T>){
+            return typename detail::integerValToCompStringInterm<val>::type{};
+        }else{
+            return typename valueToCompStringInter<decltype(val),val>::type{};
+        }
+    }
+    using type = decltype(f());   
+};
+template<typename T,size_t i, size_t size,const char* buf>
+struct charArrayToTypeInter{
+    static constexpr auto f(){
+        if constexpr(i<size){
+            using t = typename T::template push_back<*(buf+i)>;
+            return typename charArrayToTypeInter<t,i+1,size,buf>::type{};
+        }else{
+            return T{};
+        }
+    }
 
+    using type = decltype(f());
+};
+
+
+
+template<const char* buf, size_t len>
+struct charArrayToType{
+    using type = charArrayToTypeInter<decltype(""_compStr),0,len,buf>::type;
+};
+
+template<const char* buf >
+struct valueToCompStringInter<const char*,buf>{
+    using type = charArrayToType<buf,detail::getCstrLength<buf>()>::type;
+};
 
 
 template<template<typename...> typename Caller>
-struct templateNames{
-    using name = decltype("undefiend name"_compStr);
+struct templatedTypeToCompString{
+    using type = decltype("[undefiend templated type name]"_compStr);
     //static_assert(0);
 };
 
-#define createTemplateNameDefinition(x) template<> struct templateNames<x>{ using name = decltype(#x ""_compStr);};
+#define createTemplatedTypeDefinition(x) template<> struct templatedTypeToCompString<x>{ using type = decltype(#x ""_compStr);};
 
 
 template<>
-struct templateNames<std::is_same>{
-    using name = decltype("std::is_same"_compStr);
+struct templatedTypeToCompString<std::is_same>{
+    using type = decltype("std::is_same"_compStr);
 };
 
-createTemplateNameDefinition(std::is_base_of);
+createTemplatedTypeDefinition(std::is_base_of);
 
 }
 }
@@ -540,15 +980,25 @@ createTemplateNameDefinition(std::is_base_of);
 namespace verbose_static_assertNS{
 using namespace compStringNS;
 using namespace compStringNS::compStringConvNS;
+
+template<typename T,typename containerType = void>
+struct VSA_template_parameter_pack_data;
+
 namespace detail{
+
+template<typename T>
+struct type_wrapper{
+    using type = T;
+};
+
 template<size_t i,size_t target,typename T,typename... Ts>
 struct mp_list_at_impl{
     static constexpr auto f(){
         if constexpr(sizeof...(Ts) == 0){
-            return T{};
+            return type_wrapper<T>{};
         }else
         if constexpr(i == target){
-            return T{};
+            return type_wrapper<T>{};
         }else{
             return typename mp_list_at_impl<i+1,target,Ts...>::type{};
         }
@@ -558,49 +1008,161 @@ struct mp_list_at_impl{
 
 template<typename... T>
 struct mp_list{
+    static constexpr size_t size = sizeof...(T);
+
     template<size_t i>
-    using at =typename mp_list_at_impl<0,i,T...>::type;
+    using at =typename mp_list_at_impl<0,i,T...>::type::type;
+
+    template<typename... other>
+    using append = mp_list<T...,other...>;
 };
-}
+
+
+template<auto val>
+struct valueAsType{
+    using type = decltype(val);
+    static constexpr type value = val;
+};
 
 template<typename T>
-struct verbose_static_assert_messageData;
+struct isTypeImpl{
+    static constexpr bool value = true;
+};
+template<auto val>
+struct isTypeImpl<valueAsType<val>>{
+    static constexpr bool value = false;
+};
 
-template<template<typename...> typename caller,typename...T>
-struct verbose_static_assert_messageData<caller<T...>>{
-    static constexpr size_t argSize = sizeof...(T);
-    template<typename...Ts>
-    using templateType = caller<Ts...>;
-    using templateTypeString = typename templateNames<caller>::name;
+template<bool falseV,typename T, size_t i>
+struct typeAtImplFailerMsg{
+    using type = typename T::template at<i>;
+};
+
+template<typename T, size_t i>
+struct typeAtImplFailerMsg<false,T,i>{
+    using vWrap = typename T::template at<i>;
+    using msg = decltype("VSA_TPP_data::typeAt - tried to access template parameter at pos "_compStr)
+    ::template append<typename valueToCompString<i>::type>
+    ::template append<decltype(" is not a type, but a vlaue of type \'"_compStr)>
+    ::template append<typename typeToCompString<typename vWrap::type>::type>
+    ::template append<decltype("\' and eqaul to ")>
+    ::template append<typename valueToCompString<vWrap::value>::type>
+    ::template append<decltype("\n"_compStr)>;
+
+    static_assert(false,msg::sv);
+
+};
+
+
+template<typename T,bool isType, size_t indx>
+struct typeAtImpl{
+    using type = typeAtImplFailerMsg<isType,T,indx>::type;
+};
+
+template<bool falseV,typename T,size_t i>
+struct valueAtImplFailerMsg{
+    static constexpr auto value = T::template at<i>::value;
+};
+
+template<typename T, size_t i>
+struct valueAtImplFailerMsg<false,T,i>{
+    using msg = decltype("VSA_TPP_data::valueAt -  tried to access template parameter at pos "_compStr)
+    ::template append<typename valueToCompString<i>::type>
+    ::template append<decltype(" is not a value, but a type \'"_compStr)>
+    ::template append<typename typeToCompString<typename T::template at<i>>::type>
+    ::template append<decltype("\'\n"_compStr)>;
+
+
+    static_assert(false,msg::sv);
+};
+
+template<typename T, bool isValue, size_t indx>
+struct valueAtImpl{
+    static constexpr auto value = valueAtImplFailerMsg<isValue,T,indx>::value;
+};
+
+template<typename T>
+struct test_if_is_VSA_template_paremeter_pack_data_Impl{
+    using msg = decltype("given type is not a VAS_tempalte_parameter_pack_data type, it is the type \'"_compStr)
+    ::template append<typename typeToCompString<T>::type>
+    ::template append<decltype("\'\n"_compStr)>;
+    static_assert(false,msg::sv);
+};
+
+template<typename T, typename C>
+struct test_if_is_VSA_template_paremeter_pack_data_Impl<VSA_template_parameter_pack_data<T,C>>{
+    using type = void;
+};
+
+}
+
+
+
+template<typename T,typename containerType>
+struct VSA_template_parameter_pack_data{
+    static constexpr size_t size = T::size;
     template<size_t i>
-    using typeAt = typename detail::mp_list<T...>::at<i>;
+    static constexpr bool isType = detail::isTypeImpl<typename T::template at<i>>::value;
+    template<size_t i>
+    static constexpr bool isValue = !isType<i>;
+    template<size_t i>
+    using typeAt = typename detail::typeAtImpl<T,isType<i>,i>::type;
     template<size_t i>
     using typeStringAt = typename typeToCompString<typeAt<i>>::type;
+    template<size_t i>
+    static constexpr auto valueAt = detail::valueAtImpl<T,isValue<i>,i>::value;
+    template<size_t i>
+    using valueStringAt = typename valueToCompString<valueAt<i>>::type;
+    using container = containerType;
+    
 };
 
-template<typename T,template<typename...> typename msg>
-struct verbose_static_assert;
-
-template<template<typename...> typename caller,typename...T, template<typename...> typename msg>
-struct verbose_static_assert<caller<T...>,msg>{
-    using ExprT = caller<T...>;
-    static constexpr auto value = ExprT::value;
-
-     using name = typename templateNames<caller>::name;
-    static constexpr size_t argCount = sizeof...(T);
-    using argList = detail::mp_list<T...>;
-    using assert_msg = typename msg<caller<T...>>::msg;
-    static_assert(value,assert_msg::sv);
-
-    static void f(){
-        std::cout<<"msg: "<<assert_msg::sv<<std::endl;
-        std::cout<<"name: "<<name::sv<<std::endl;
-        int i=0;
-        ((std::cout<<"arg["<<i++<<"] "<<typeToCompString<T>::type::sv<<std::endl),...);
-        std::cout<<"TET:  "<<typeToCompString< typename argList::at<2>  >::type::sv<<std::endl;
-        std::cout<<"value: "<<value<<std::endl;
-    }
+template<typename T>
+struct test_if_is_VSA_template_paremeter_pack_data{
+    using type = detail::test_if_is_VSA_template_paremeter_pack_data_Impl<T>::type;
 };
+
+template<typename T>
+struct VSA_translate_with_only_types;
+
+template<template<typename...> typename container, typename... T>
+struct VSA_translate_with_only_types<container<T...>>{
+    using type = VSA_template_parameter_pack_data<detail::mp_list<T...>,container<void>>;
+};
+
+template<typename T>
+struct VSA_translate_with_only_values;
+
+template<template<auto...> typename container, auto... V>
+struct VSA_translate_with_only_values<container<V...>>{
+    using list = detail::mp_list<detail::valueAsType<V>...>;
+    using type = VSA_template_parameter_pack_data<list,container<>>;
+};
+
+
+template<bool value, typename T, template<typename> typename msg, template<typename> typename translator>
+struct verbose_static_assert_error_message_output{
+    using errorMsg = typename msg<typename translator<T>::type>::msg;
+    static_assert(value,errorMsg::sv);
+    using type =void;
+};
+
+template<typename T, template<typename> typename msg, template<typename> typename translator>
+struct verbose_static_assert_error_message_output<true,T,msg,translator>{
+    using type = void;
+};
+
+
+
+template<typename T, template<typename> typename msg, template<typename> typename VSA_translater = VSA_translate_with_only_types>
+struct verbose_static_assert{
+    static constexpr auto value = T::value;
+    //using assert_msg = typename msg<T>::msg;
+    using init_static_assert = typename verbose_static_assert_error_message_output<value,T,msg,VSA_translater>::type;
+};
+
+
+
 }
 
 
@@ -627,7 +1189,7 @@ struct compStringTests{
     static_assert(ourworld::erase<4,99>::sv == "hello"sv);
     //push_back & pop_back
     static_assert(str::push_back<'s'>::sv == "hello worlds"sv);
-    static_assert(str::pop_back::sv == "hello worl"sv);
+    static_assert(str::pop_back<>::sv == "hello worl"sv);
     //replace
     static_assert(ourworld::replace<5,4,my>::sv == "hello my world"sv);
     //find variants
@@ -726,7 +1288,8 @@ struct compStringTests{
                     return'Y';
             });
     static_assert(str::replace_if<replaceFuncD>::sv == "hYlYo wYrYd"sv);
-
+    // reverse
+    static_assert(str::reverse<>::sv == "dlrow olleh"sv);
 };
 }
 
@@ -742,6 +1305,13 @@ namespace{
         #define vToSvTest(x,str) static_assert(vToSV<x> == #str""sv,vToSV<x>);
         //integer to compString
         static_assert(vToSV<0> == "0"sv);
+        static_assert(vToSV<'a'> == "a"sv);
+        static_assert(vToSV<'z'> == "z"sv);
+        static_assert(vToSV<'\\'> == "\\"sv);
+        static_assert(vToSV<'&'> == "&"sv);
+        static_assert(vToSV<true> == "true"sv);
+        static_assert(vToSV<false> == "false"sv);
+
         vToSvTestI(1);
         vToSvTestI(-1);
         vToSvTestI(22);
@@ -771,6 +1341,24 @@ namespace{
         template<typename T>
         static constexpr auto tToSv = typeToCompString<T>::type::sv;
         #define testType(x) static_assert(tToSv<x> == #x""sv,tToSv<x>);
+        testType(void);
+        testType(char);
+        testType(char&);
+        testType(char&&);
+        testType(const char&);
+        testType(volatile char);
+        testType(const volatile char&&);
+        testType(char***);
+        testType(char*&);
+        testType(const char* const volatile&);
+        testType(char*);
+        testType(char* const);
+        testType(char* volatile);
+        testType(char* const volatile);
+        testType(const char* const);
+        testType(const volatile char* const volatile);
+        testType(unsigned char);
+        testType(signed char);
         testType(int);
         testType(const int);
         testType(const volatile int);
@@ -784,11 +1372,30 @@ namespace{
         testType(const volatile long long int);
         testType(float);
         testType(const volatile double);
+        testType(bool());
+        testType(bool(char));
+        testType(bool(char,int));
+        testType(int(char,int,double));
+        testType(int(char,int,double) const);
+        testType(int(char,int,double) const volatile);
+        testType(int(char,int,double)&);
+        testType(int(char,int,double)&&);
+        testType(int(char,int,double) volatile&&);
+        testType(int(*)(char,int,double));
+        testType(const int(*)(char,int,double));
+        testType(int(char,int,double) const&);
+        testType(int(char,int,double) volatile&&);
+        testType(const int(*&)(char,int,double));
+        testType(const int(*&&)(char,int,double));
+        testType(const double&(const char*,float&,bool));
+        testType(const double&(const char*,float&,bool) const volatile&&);
+        testType(const double&(*&&)(const char*,float&,bool));
+        testType(int(* const&&)(char,int,double));
+        testType(int(* const volatile&&)(char,int,double));
+
+    
     };
 }
-
-
-
 
 
 
@@ -800,7 +1407,7 @@ struct are_all_same_VSA_message_impl{
         static_assert(std::is_same_v<typename data::template typeAt<0>,int>);
 
 
-        if constexpr(data::argSize <i){
+        if constexpr(data::size <=i){
             return ret{};
         }else{
             if constexpr(!std::is_same_v<typename data::template typeAt<0>,typename data::template typeAt<i>>){
@@ -822,9 +1429,8 @@ struct are_all_same_VSA_message_impl{
 
 template<typename T>
 struct are_all_same_VSA_message {
-    using typeData = typename verbose_static_assertNS::verbose_static_assert_messageData<T>;
-
-    using msg = typename are_all_same_VSA_message_impl<typeData,1,decltype("\nFound diffreant types:\n"_compStr)>::type;
+    verbose_static_assertNS::test_if_is_VSA_template_paremeter_pack_data<T> tester{};
+    using msg = typename are_all_same_VSA_message_impl<T,1,decltype("\nFound differant types:\n"_compStr)>::type;
 };
 
 template<typename T,typename... U>
@@ -837,7 +1443,7 @@ template<typename typeData, size_t start,size_t i, typename ret>
 struct are_all_differant_VSA_message_impl_check{
     static constexpr auto f(){
        
-        if constexpr( i > typeData::argSize){
+        if constexpr( i >= typeData::size){
             return ret{};
         }else
         if constexpr (std::is_same_v<typename typeData::template typeAt<start>,typename typeData::template typeAt<i>>){
@@ -858,7 +1464,7 @@ struct are_all_differant_VSA_message_impl_check{
 template<typename typeData, typename typeSet, size_t i, typename ret>
 struct are_all_differant_VSA_message_impl{
     static constexpr auto f(){
-        if constexpr(i>=typeData::argSize){
+        if constexpr(i>=typeData::size){
             return ret{};
         }else
         if constexpr(! typeSet::template contains<typename typeData::template typeAt<i>>){
@@ -872,6 +1478,12 @@ struct are_all_differant_VSA_message_impl{
     using type = decltype(f());
 };
 
+template<typename T>
+struct SNBEI_VSA_message{
+    static_assert(false);
+    using msg = decltype("should not be instantiated"_compStr);
+};
+
 template<typename... T>
 struct type_set{
     template<typename U>
@@ -882,9 +1494,8 @@ struct type_set{
 
 template<typename T>
 struct are_all_differant_VSA_message{
-    using typeData = typename verbose_static_assertNS::verbose_static_assert_messageData<T>;
     using typeSet = type_set<>;
-    using msg = typename are_all_differant_VSA_message_impl<typeData,typeSet,0,decltype("\nSame types found:\n"_compStr)>::type;
+    using msg = typename are_all_differant_VSA_message_impl<T,typeSet,0,decltype("\nSame types found:\n"_compStr)>::type;
 };
 
 template<typename T,typename...U>
@@ -897,15 +1508,303 @@ struct are_all_differant<T>{
     static constexpr bool value = 1;
 };
 
+
+template<typename T,size_t indx, typename msg>
+struct is_in_ascending_order_VSA_message_impl{
+    static constexpr auto f(){
+        if constexpr(indx >= T::size-1){
+            return msg{};
+        }else{
+            constexpr auto v1 = T::template valueAt<indx>;
+            constexpr auto v2 = T::template valueAt<indx+1>;
+            if constexpr(v1 >= v2){
+            using apMsg = decltype("At pos "_compStr)
+            ::template append<typename valueToCompString<indx>::type>
+            ::template append<decltype(" and "_compStr)>
+            ::template append<typename valueToCompString<indx+1>::type>
+            ::template append<decltype(", the value "_compStr)>
+            ::template append<typename valueToCompString<v1>::type>
+            ::template append<decltype(" !< "_compStr)>
+            ::template append<typename valueToCompString<v2>::type>
+            ::template append<decltype(", types are: \'"_compStr)>
+            ::template append<typename typeToCompString<decltype(v1)>::type>
+            ::template append<decltype("\' and \'"_compStr)>
+            ::template append<typename typeToCompString<decltype(v2)>::type>
+            ::template append<decltype("\',\n"_compStr)>;
+            using rmsg = typename msg::template append<apMsg>;
+            return typename is_in_ascending_order_VSA_message_impl<T,indx+1,rmsg>::type{};
+            }else{
+                return typename is_in_ascending_order_VSA_message_impl<T,indx+1,msg>::type{};
+            }
+
+        }
+    }
+    using type = decltype(f());
+};
+
+template<typename T>
+struct is_in_ascending_order_VSA_message{
+    using msg = typename is_in_ascending_order_VSA_message_impl<T,0,decltype("\nFound values in non ascending order:\n"_compStr)>::type;
+    //using msg = decltype("eroor msg"_compStr);
+};
+
+
+template<auto... Vs>
+struct is_in_ascending_order{
+    static constexpr bool value = true;
+};
+
+template<auto V, auto U, auto... other>
+struct is_in_ascending_order<V,U,other...>{
+    static constexpr bool value = (V < U) && is_in_ascending_order<U,other...>::value;
+};
+
+template<auto V, auto U>
+struct is_in_ascending_order<V,U>{
+    static constexpr bool value = (V < U);
+};
+
+template<auto V>
+struct is_in_ascending_order<V>{
+    static constexpr bool value = 1;
+};
+
+
+template<typename>
+struct translaterT;
+
+//create the specialization for the pattern of we want
+template<template<typename,bool,typename...> typename container, typename T, bool A, typename... Us>
+struct translaterT<container<T,A,Us...>>{
+	//here we will create a mp_list of the template parameters
+	using list = verbose_static_assertNS::detail::mp_list< T, verbose_static_assertNS::detail::valueAsType<A>, Us... >;
+	// Note that we converted the value A into the wrapper type 'valueAsType'
+	// and that all parameters in mp_list are in the same order as MpFunc
+	
+	//container type
+	//here we pass the type container with some arbitrary parameters.
+	using contT = container<void,0>;
+
+	//create the final VSA_template_parameter_pack_data type
+	using type = verbose_static_assertNS::VSA_template_parameter_pack_data<list,contT>;
+};
+
+//A helper type the will be called recursively to iterate over the types of Us and generate the error message
+template<typename T, size_t i, typename msg>
+// Here T is the VSA_template_parameter_pack_data, i is the index of the current tested type, and msg is the previous part of the message that we will append to
+struct MpFunc_VSA_message_impl{
+    static constexpr auto f(){
+        // Here we will break recursion after we went through all the types
+        if constexpr (T::size <= i){
+            //went through all types, finish message,
+            //depending on bool A appen an endline symbol to the end
+            if constexpr(T::template valueAt<1> == 1){
+                using retMsg = typename msg::template append<decltype("\n"_compStr)>;// adding "/n" to the end of message
+                return retMsg{};
+            }else{
+                return msg{}; // returning message as is
+            }
+        }else{
+            // testing type at i
+            constexpr bool A = T::template valueAt<1>; // value of bool A
+            using baseT = typename T::template typeAt<0>; // type T
+            using otherT = typename T::template typeAt<i>; // type Us[i]
+            // if A == true and T == Us[i], then upadate the message
+            if constexpr(A&&std::is_same_v<baseT,otherT>){ 
+                using addOnMessage = typename valueToCompString<i>::type::template append<decltype(", "_compStr)>; // string to add to message
+                using retMsg = typename msg::template append<addOnMessage>; // appending 
+                return typename MpFunc_VSA_message_impl<T,i+1,retMsg>::type{}; // recursive call, with the updated message
+            }else
+            // if A == false and T != Us[i], then update the message
+            if constexpr((!A)&&(!std::is_same_v<baseT,otherT>)){
+                using addOnMessage = typename decltype("the type '"_compStr)
+                ::template append<typename T::template typeStringAt<i>>
+                ::template append<decltype("' at pos: "_compStr)>
+                ::template append<typename valueToCompString<i>::type>
+                ::template append<decltype("\n"_compStr)>; // string to add to message
+                using retMsg = typename msg::template append<addOnMessage>;
+                return typename MpFunc_VSA_message_impl<T,i+1,retMsg>::type{};// recursive call, with the updated message
+            }else{
+                // no error state achived, so move on to the next type, with message unchanged 
+                return typename MpFunc_VSA_message_impl<T,i+1,msg>::type{};// recursive call, with the mesage as is
+            }
+        }
+    };
+    using type = decltype(f()); // return type of f() is a compString containing the message
+};
+
+//the message template type
+template<typename T>
+struct MpFunc_VSA_message{
+    // depending on bool A, the message will be began differently 
+	static constexpr auto f(){
+		if constexpr(T::template valueAt<1> == 1){
+			using retMsg = typename decltype("\nfound types that are equal to the type '"_compStr)	
+					::template append<typename T::template typeStringAt<0> >
+					::template append<decltype("' at pos:\n"_compStr)>;
+			return retMsg{}; // bool A == true
+		}else{
+			using retMsg = typename decltype("\nfound types that are differnt from the type '"_compStr)	
+					::template append<typename T::template typeStringAt<0> >
+					::template append<decltype("':\n"_compStr)>;
+			return retMsg{}; // bool A == false
+		}
+	}
+	
+	using msg = typename MpFunc_VSA_message_impl<T,2,decltype(f())>::type; // call the recursive type MpFunc_VSA_message_impl to generate the error message
+};
+
+template<typename T, bool A, typename... Us>
+struct MpFunc{
+    static constexpr bool value = false;
+};
+
+
+
+template<template<typename,typename> typename comparitor,typename A, typename B>
+struct test_comparitor_ab{
+
+    template<template<typename,typename> typename D>
+    static bool test(D<A,B>*);
+    template<template<typename,typename> typename D>
+    static void test(...);
+
+    static constexpr bool value = std::is_same_v<bool,decltype(test<comparitor>(0))>;
+};
+
+
+template<template<typename,typename> typename comparitor,typename T, typename U, typename...Us> 
+struct is_comparitor_for_template_pack_column{
+    static constexpr bool f(){
+        if constexpr(sizeof...(Us) == 0){
+            return test_comparitor_ab<comparitor,T,U>::value;
+        }else{
+            return test_comparitor_ab<comparitor,T,U>::value && is_comparitor_for_template_pack_column<comparitor,T,Us...>::value;
+        }
+    }
+    static constexpr bool value = f();
+};
+
+template<template<typename,typename> typename comparitor,typename T, typename...Us> 
+struct is_comparitor_for_template_pack{
+    static constexpr bool f(){
+        if constexpr(sizeof...(Us)==0){
+            return true;
+        }else{
+            return is_comparitor_for_template_pack_column<comparitor,T,Us...>::value && is_comparitor_for_template_pack<comparitor,Us...>::value;
+        }
+    }
+    static constexpr bool value = f();
+};
+
+template<typename T, typename comparitor, size_t indx, size_t offset, typename msg>
+struct is_comparitor_for_template_pack_VSA_message_line_impl;
+
+template<typename T, size_t indx, size_t offset, typename msg, template<typename,typename> typename comparitor>
+struct is_comparitor_for_template_pack_VSA_message_line_impl<T,comparitor<char,char>,indx,offset,msg>{
+    static constexpr auto f(){
+        if constexpr(offset > T::size-1){
+            return msg{};
+        }else{
+            if constexpr(!test_comparitor_ab<comparitor,typename T::typeAt<indx>, typename T::typeAt<offset>>::value){
+                using addOnMessage = typename decltype("could not create the comparitor type '"_compStr)
+                ::template append<typename templatedTypeToCompString<comparitor>::type>
+                ::template append<decltype("' with the types '"_compStr)>
+                ::template append<typename typeToCompString<typename T::typeAt<indx>>::type>
+                ::template append< decltype("' and '"_compStr)>
+                ::template append< typename typeToCompString<typename T::typeAt<offset>>::type >
+                ::template append<decltype("', at positions "_compStr)>
+                ::template append<typename valueToCompString<indx>::type>
+                ::template append<decltype(" and "_compStr)>
+                ::template append<typename valueToCompString<offset>::type>
+                ::template append<decltype("\n"_compStr)>;
+                using retMsg = typename msg::template append<addOnMessage>;
+                return typename is_comparitor_for_template_pack_VSA_message_line_impl<T,comparitor<char,char>,indx,offset+1,retMsg>::type{};
+            }else{
+                return typename is_comparitor_for_template_pack_VSA_message_line_impl<T,comparitor<char,char>,indx,offset+1,msg>::type{};
+            }
+        }
+    }
+    using type = decltype(f());
+};
+
+template<typename T, size_t indx, typename msg>
+struct is_comparitor_for_template_pack_VSA_message_impl{
+    static constexpr auto f(){
+        if constexpr( indx > T::size-1){
+            return msg{};
+        }else{
+            using newMsg =  typename is_comparitor_for_template_pack_VSA_message_line_impl<T,typename T::typeAt<0>, indx,indx+1,msg>::type;
+            return typename is_comparitor_for_template_pack_VSA_message_impl<T,indx+1,newMsg>::type{};
+        }
+    }
+    using type = decltype(f());
+};
+
+template<typename T>
+struct is_comparitor_for_template_pack_VSA_message{
+    using msg = typename is_comparitor_for_template_pack_VSA_message_impl<T,1,decltype("\nfailer to creat comparitor:\n"_compStr)>::type;
+};
+
+template<typename T>
+struct is_comparitor_for_template_pack_VSA_translate;
+
+template<template<typename,typename> typename comparitor,typename T, typename... Us>
+struct is_comparitor_for_template_pack_VSA_translate<is_comparitor_for_template_pack<comparitor,T,Us...>>{
+    using type = verbose_static_assertNS::VSA_template_parameter_pack_data<verbose_static_assertNS::detail::mp_list<comparitor<char,char>,T,Us...>,void>;
+};
+
+
+template<typename A,typename B>
+concept is_comparibale = requires(A a, B b){
+    {a < b};
+    {b < a};
+};
+
+struct some_none_fundamental_type{
+    char v[10]; 
+};
+
+template<typename A, typename B>
+requires is_comparibale<A,B> || (std::is_same_v<A,int> && std::is_same_v<B,some_none_fundamental_type>)
+struct myComparitor{
+    bool operator()(A a, B b);
+};
+
+namespace compStringNS{
+namespace compStringConvNS{
+        createTemplatedTypeDefinition(myComparitor);
+        createTypeDefinition(some_none_fundamental_type);
+    };
+};
+
 int main() {
  
     using namespace verbose_static_assertNS;
    
     using t = are_all_same<int,int,char,float,int,double,int,long int,int>;
     verbose_static_assert<t,are_all_same_VSA_message>{};
-    using y = are_all_differant<int,long int,int, char,float,double,char,double>;
+    using y = are_all_differant<int,double&&,const char* const volatile&,long int,int, char,float,double&,double&&,char,double&,const char* const volatile&>;
     verbose_static_assert<y,are_all_differant_VSA_message>{};
-
-
+    verbose_static_assert<std::is_same<int,int>,SNBEI_VSA_message>{};
+    using z = is_in_ascending_order<1,5u,3,4,'4',6,'\\',-1,-6>;
+    verbose_static_assert<z,is_in_ascending_order_VSA_message,VSA_translate_with_only_values>{};
+    using for_VSA_a = MpFunc<int,1,bool,char,int,long int, double,int,int,char,int>;
+    verbose_static_assert<for_VSA_a,MpFunc_VSA_message,translaterT>{};
+    using for_VSA_b = MpFunc<int,0,bool,char,int,long int, double,int,int,char,int>;
+    verbose_static_assert<for_VSA_b,MpFunc_VSA_message,translaterT>{};
+    using w = is_comparitor_for_template_pack<myComparitor,int,long int,some_none_fundamental_type,char>;
+    verbose_static_assert<w,is_comparitor_for_template_pack_VSA_message,is_comparitor_for_template_pack_VSA_translate>{};
     return 0;
+
+    static constexpr char ptr[] = "elvis curl";
+    constexpr auto sptr = valueToCompString<ptr>::type::sv;
+    static_assert(sptr == "elvis curl"sv);
+    constexpr auto sptr2  = charArrayToType<ptr,5>::type::sv;
+    static_assert(sptr2 == "elvis"sv);
+
+    using ftype = bool(int) &&;
+    static_assert(std::is_function_v<ftype>);
+    static_assert(!std::is_reference_v<ftype>);
+    static_assert(std::is_same_v<std::remove_reference_t<ftype>,bool(int) &&>);
 }
