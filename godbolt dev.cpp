@@ -375,10 +375,190 @@ constexpr compString<detail::tstring<chars...>> operator""_compStr() {
 namespace compStringNS{
 namespace compStringConvNS{
 
+
+
+namespace typeToStringDefinitions{
+
+template<typename T>
+struct typeToCompStringInter{
+    using type = decltype("[no name given to type]"_compStr);
+};
+
+#define createTypeDefinition(x) template<> struct typeToCompStringInter<x>{ using type = decltype(#x ""_compStr);};
+
+createTypeDefinition(void);
+createTypeDefinition(bool);
+createTypeDefinition(char);
+createTypeDefinition(signed char);
+createTypeDefinition(unsigned char);
+createTypeDefinition(short int);
+createTypeDefinition(unsigned short int);
+createTypeDefinition(int);
+createTypeDefinition(unsigned int);
+createTypeDefinition(long int);
+createTypeDefinition(unsigned long int);
+createTypeDefinition(long long int);
+createTypeDefinition(unsigned long long int);
+createTypeDefinition(float);
+createTypeDefinition(double);
+createTypeDefinition(long double);
+}
+
 template<typename T>
 struct typeToCompString;
 
+template<auto val>
+struct valueToCompString;
+
+namespace detailPPD{
+
+template<typename T>
+struct type_wrapper{
+    using type = T;
+};
+
+template<size_t i,size_t target,typename T,typename... Ts>
+struct mp_list_at_impl{
+    static constexpr auto f(){
+        if constexpr(sizeof...(Ts) == 0){
+            return type_wrapper<T>{};
+        }else
+        if constexpr(i == target){
+            return type_wrapper<T>{};
+        }else{
+            return typename mp_list_at_impl<i+1,target,Ts...>::type{};
+        }
+    }
+    using type = decltype(f());
+};
+
+template<typename... T>
+struct mp_list{
+    static constexpr size_t size = sizeof...(T);
+
+    template<size_t i>
+    using at =typename mp_list_at_impl<0,i,T...>::type::type;
+
+    template<typename... other>
+    using append = mp_list<T...,other...>;
+};
+
+
+template<auto val>
+struct valueAsType{
+    using type = decltype(val);
+    static constexpr type value = val;
+};
+
+template<typename T>
+struct isTypeImpl{
+    static constexpr bool value = true;
+};
+template<auto val>
+struct isTypeImpl<valueAsType<val>>{
+    static constexpr bool value = false;
+};
+
+template<bool falseV,typename T, size_t i>
+struct typeAtImplFailerMsg{
+    using type = typename T::template at<i>;
+};
+
+template<typename T, size_t i>
+struct typeAtImplFailerMsg<false,T,i>{
+    using vWrap = typename T::template at<i>;
+    using msg = decltype("VSA_TPP_data::typeAt - tried to access template parameter at pos "_compStr)
+    ::template append<typename valueToCompString<i>::type>
+    ::template append<decltype(" is not a type, but a vlaue of type \'"_compStr)>
+    ::template append<typename typeToCompString<typename vWrap::type>::type>
+    ::template append<decltype("\' and eqaul to ")>
+    ::template append<typename valueToCompString<vWrap::value>::type>
+    ::template append<decltype("\n"_compStr)>;
+
+    static_assert(false,msg::sv);
+
+};
+
+
+template<typename T,bool isType, size_t indx>
+struct typeAtImpl{
+    using type = typeAtImplFailerMsg<isType,T,indx>::type;
+};
+
+template<bool falseV,typename T,size_t i>
+struct valueAtImplFailerMsg{
+    static constexpr auto value = T::template at<i>::value;
+};
+
+template<typename T, size_t i>
+struct valueAtImplFailerMsg<false,T,i>{
+    using msg = decltype("VSA_TPP_data::valueAt -  tried to access template parameter at pos "_compStr)
+    ::template append<typename valueToCompString<i>::type>
+    ::template append<decltype(" is not a value, but a type \'"_compStr)>
+    ::template append<typename typeToCompString<typename T::template at<i>>::type>
+    ::template append<decltype("\'\n"_compStr)>;
+
+
+    static_assert(false,msg::sv);
+};
+
+template<typename T, bool isValue, size_t indx>
+struct valueAtImpl{
+    static constexpr auto value = valueAtImplFailerMsg<isValue,T,indx>::value;
+};
+
+template<bool isValue,typename T, size_t i>
+struct stringAt_impl{
+    static constexpr auto f(){
+        if constexpr(isValue){
+            return typename valueToCompString<valueAtImpl<T,true,i>::value>::type{};
+        }else{
+            return typename typeToCompString<typename typeAtImpl<T,true,i>::type>::type{}; 
+        }
+    }
+
+    using type = decltype(f());
+};
+
+template<typename T,typename containerType>
+struct detail_TPPD{
+    static constexpr size_t size = T::size;
+    template<size_t i>
+    static constexpr bool isType = isTypeImpl<typename T::template at<i>>::value;
+    template<size_t i>
+    static constexpr bool isValue = !isType<i>;
+    template<size_t i>
+    using typeAt = typename typeAtImpl<T,isType<i>,i>::type;
+    template<size_t i>
+    using typeStringAt = typename typeToCompString<typeAt<i>>::type;
+    template<size_t i>
+    static constexpr auto valueAt = valueAtImpl<T,isValue<i>,i>::value;
+    template<size_t i>
+    using valueStringAt = typename valueToCompString<valueAt<i>>::type;
+    template<size_t i>
+    using stringAt = typename stringAt_impl<isValue<i>,T,i>::type;
+    using container = containerType;
+};
+
+}
+
+
+namespace templatedTypeDefinitions{
+using detailPPD::valueAsType;
+using detailPPD::mp_list;
+
+template<typename T>
+struct templatedTypeToCompString:std::false_type{
+    using typeList = void; // should never be used
+    using typeName = decltype("not a template type"_compStr);
+};
+
+}
+
 namespace detail{
+
+template<typename T,bool>
+struct typeToCompStringInterm;
 
 template<typename T>
 struct typeToCompString_cv{
@@ -402,7 +582,7 @@ struct typeToCompString_cv{
 template<typename msg,typename T, typename... Ts>
 struct typesToStringComma{
     static constexpr auto f(){  
-        using str = typename typeToCompString<T>::type;
+        using str = typename typeToCompStringInterm<T,false>::type;
         using newMsg = typename msg::template append<str>;
         if constexpr(sizeof...(Ts) != 0){
             using retMsg = typename newMsg::template append<decltype(","_compStr)>;
@@ -418,7 +598,7 @@ struct typesToStringComma{
 template<typename R, typename... Args>
 struct functionBase{
     static constexpr auto f(){
-        using lHalf = typename typeToCompString<R>::type::template append<decltype("("_compStr)>;
+        using lHalf = typename typeToCompStringInterm<R,false>::type::template append<decltype("("_compStr)>;
         if constexpr(sizeof...(Args) == 0){
             return typename lHalf::template append<decltype(")"_compStr)>{};
         }else{
@@ -794,43 +974,61 @@ constexpr size_t getCstrLength(){
     size_t ret=0;
     while(*(buf+ret) != '\0') ret++;
     return ret;
-}
-
-
-
-}
-
-
-
-template<typename T>
-struct typeToCompStringInter{
-    using type = decltype("[no name given to type]"_compStr);
 };
 
-#define createTypeDefinition(x) template<> struct typeToCompStringInter<x>{ using type = decltype(#x ""_compStr);};
-
-createTypeDefinition(void);
-createTypeDefinition(bool);
-createTypeDefinition(char);
-createTypeDefinition(signed char);
-createTypeDefinition(unsigned char);
-createTypeDefinition(short int);
-createTypeDefinition(unsigned short int);
-createTypeDefinition(int);
-createTypeDefinition(unsigned int);
-createTypeDefinition(long int);
-createTypeDefinition(unsigned long int);
-createTypeDefinition(long long int);
-createTypeDefinition(unsigned long long int);
-createTypeDefinition(float);
-createTypeDefinition(double);
-createTypeDefinition(long double);
-
-
-
+template<bool is_pointer,typename T>
+struct TTCS_removePointer_cond{
+    using type = T;
+};
 
 template<typename T>
-struct typeToCompString{
+struct TTCS_removePointer_cond<true,T>{
+    using type = std::remove_pointer_t<T>;
+};
+
+template<bool is_ref, typename T>
+struct TTCS_removeRef_cond{
+    using type = T;
+};
+
+template<typename T>
+struct TTCS_removeRef_cond<true,T>{
+    using type = std::remove_reference_t<T>;
+};
+
+
+
+template<bool, typename T>
+struct SFNAI_If_apply{
+    using type = T;
+};
+
+template<typename T>
+struct req_remove_ref_pointer{
+    static constexpr bool is_pointer = std::is_pointer_v<T>;
+    static constexpr bool is_ref = std::is_reference_v<T>;
+    using t = typename TTCS_removeRef_cond<is_ref,typename TTCS_removePointer_cond<is_pointer,T>::type>::type;
+    static constexpr bool cond = std::is_pointer_v<t> || std::is_reference_v<t>;
+   
+    using type = typename SFNAI_If_apply<cond,t>::type;
+};
+
+template<typename T>
+struct SFNAI_If_apply<true,T>{
+    using type = typename req_remove_ref_pointer<T>::type;
+};
+
+template<typename T>
+struct typeToCompString_is_base_a_function{
+    using type = typename req_remove_ref_pointer<T>::type;
+    static constexpr bool value = std::is_function_v<type>;
+};
+
+
+
+
+template<typename T, bool funcSigOverride>
+struct typeToCompStringInterm{
     // steps to decompose a type:
     // 0. is function type (cuase ftypes are special)
     // 1. check refrences (noexcept for functions)
@@ -839,63 +1037,110 @@ struct typeToCompString{
     // if not base type, the repeat
     // now T will be a base type of some kind
     static constexpr auto f(){
-           if constexpr(std::is_function_v<T>){
-                return typename detail::typeToCompString_function_type<T>::type{};
+            if constexpr(!funcSigOverride && detail::typeToCompString_is_base_a_function<T>::value){
+                using ptrStr = typename typeToCompStringInterm<T,true>::type;
+                using baseFunc = typename detail::typeToCompString_is_base_a_function<T>::type;
+                using funcStr = typename detail::typeToCompString_function_type<baseFunc>::type;
+                if constexpr(! ptrStr::template equal<decltype(""_compStr)>){
+                    using fptr = typename decltype("("_compStr):: append<ptrStr>::template append<decltype(")"_compStr)>;
+                    static constexpr size_t pos = funcStr::template find<decltype("("_compStr)>-1;
+                    using retStr = typename funcStr::template insert<pos,fptr>;
+                    return retStr{};
+                }else{
+                    return funcStr{};
+                }
+            }else
+           if constexpr(funcSigOverride && std::is_function_v<T>){
+                return decltype(""_compStr){};
+                //return typename detail::typeToCompString_function_type<T>::type{};
            }else
            if constexpr(std::is_reference_v<T>){
                 using t = std::remove_reference_t<T>;
-                if constexpr(std::is_pointer_v<t> && std::is_function_v<std::remove_pointer_t<t>>){
-                    using funcPtrType = typename typeToCompString<t>::type;
-                    static constexpr size_t pos = funcPtrType::template find<decltype(")"_compStr)> -1;
-                    if constexpr(std::is_lvalue_reference_v<T>){
-                        return typename funcPtrType::template insert<pos,decltype("&"_compStr)>{};
-                    }else{
-                        return typename funcPtrType::template insert<pos,decltype("&&"_compStr)>{};
-                    }
-                }else
                 if constexpr(std::is_lvalue_reference_v<T>){
-                    return typename typeToCompString<t>::type::template append<decltype("&"_compStr)>{};
+                    return typename typeToCompStringInterm<t,funcSigOverride>::type::template append<decltype("&"_compStr)>{};
                 }else{
-                    return typename typeToCompString<t>::type::template append<decltype("&&"_compStr)>{};
+                    return typename typeToCompStringInterm<t,funcSigOverride>::type::template append<decltype("&&"_compStr)>{};
                 }
            }else
            if constexpr(std::is_const_v<T> || std::is_volatile_v<T>){
                 using cvStr = typename detail::typeToCompString_cv<T>::type;
                 using t = std::remove_cv_t<T>;
-                if constexpr(std::is_pointer_v<T> && std::is_function_v<std::remove_pointer_t<T>>){
-                    using cvNotAddedT = typename typeToCompString<t>::type;
-                    using cvStr = typename detail::typeToCompString_cv<T>::type::template prepend<decltype(" "_compStr)>;
-                    static constexpr size_t pos = cvNotAddedT::template find<decltype("*"_compStr)>;
-                    using retStr = typename cvNotAddedT::template insert<pos,cvStr>;
-                    return retStr{};
-                }else
                 if constexpr(std::is_pointer_v<T>){
-                    return typename typeToCompString<t>::type::template append<decltype(" "_compStr)>::template append<cvStr>{};
+                    return typename typeToCompStringInterm<t,funcSigOverride>::type::template append<decltype(" "_compStr)>::template append<cvStr>{};
                 }else{
-                    using retStr =  cvStr::template append<decltype(" "_compStr)>::template append<typename typeToCompString<t>::type>;
+                    using retStr =  cvStr::template append<decltype(" "_compStr)>::template append<typename typeToCompStringInterm<t,funcSigOverride>::type>;
                     return retStr{};
                 }
            }else
            if constexpr(std::is_pointer_v<T>){
                 using t = std::remove_pointer_t<T>;
-                if constexpr(std::is_function_v<t>){
-                    return typename detail::pointerToFunction_type<t>::type{};
-                }else{
-                    return typename typeToCompString<t>::type::template append<decltype("*"_compStr)>{};
-                }
+                return typename typeToCompStringInterm<t,funcSigOverride>::type::template append<decltype("*"_compStr)>{};
+                
            }else{
-                // base types
-                if constexpr(std::is_function_v<T>){
-                    // function types
-                    return typename detail::typeToCompString_function_type<T>::type{};
-                }else{
+                
                     // fundamental and class types
-                    return typename typeToCompStringInter<T>::type{};
-                }
+                    return typename typeToStringDefinitions::typeToCompStringInter<T>::type{};
+                
            }
     }
     using type = decltype(f());
 };
+
+
+
+
+template<size_t i, typename Data, typename msg>
+struct templatedTypeToCompString_req{
+    static constexpr auto f(){
+        if constexpr( i >= Data::size){
+            return msg{};
+        }else
+        if constexpr( i == Data::size-1){
+            using retmsg = msg::template append<typename Data::template stringAt<i>>;
+            return retmsg{};
+        }else{
+            using retmsg = msg::template append<typename Data::template stringAt<i>>::template append<decltype(","_compStr)>;
+            return typename templatedTypeToCompString_req<i+1,Data,retmsg>::type{};
+        }
+    }
+    using type = decltype(f());
+};
+
+template<typename T>
+struct templatedTypeToCompString{
+    using intermData = templatedTypeDefinitions::templatedTypeToCompString<T>;
+    using templateName = typename intermData::typeName;
+    using data = detailPPD::detail_TPPD<typename intermData::typeList,void>;
+
+    using parameterStr = typename templatedTypeToCompString_req<0,data,decltype(""_compStr)>::type;
+
+    using type = templateName::template append<decltype("<"_compStr)>::template append<parameterStr>::template append<decltype(">"_compStr)>;
+};
+
+template<typename T>
+struct typeOrTemplateToCompString{
+    static constexpr auto f(){
+        if constexpr(templatedTypeDefinitions::templatedTypeToCompString<T>::value){
+            return typename templatedTypeToCompString<T>::type{};
+        }else{
+            return typename detail::typeToCompStringInterm<T,false>::type{};
+        }
+    }
+
+    using type = decltype(f());
+};
+
+}
+
+
+template<typename T>
+struct typeToCompString{
+    using type = typename detail::typeOrTemplateToCompString<T>::type;
+
+    template<typename = void>
+    using templateName = typename templatedTypeDefinitions::templatedTypeToCompString<T>::typeName;
+};
+
 
 
 template<typename T, auto val>
@@ -954,21 +1199,27 @@ struct valueToCompStringInter<const char*,buf>{
 };
 
 
-template<template<typename...> typename Caller>
-struct templatedTypeToCompString{
-    using type = decltype("[undefiend templated type name]"_compStr);
-    //static_assert(0);
-};
-
-#define createTemplatedTypeDefinition(x) template<> struct templatedTypeToCompString<x>{ using type = decltype(#x ""_compStr);};
 
 
-template<>
-struct templatedTypeToCompString<std::is_same>{
-    using type = decltype("std::is_same"_compStr);
-};
 
-createTemplatedTypeDefinition(std::is_base_of);
+
+
+
+// template<template<typename...> typename Caller>
+// struct templatedTypeToCompString{
+//     using type = decltype("[undefiend templated type name]"_compStr);
+//     //static_assert(0);
+// };
+
+// #define createTemplatedTypeDefinition(x) template<> struct templatedTypeToCompString<x>{ using type = decltype(#x ""_compStr);};
+
+
+// template<>
+// struct templatedTypeToCompString<std::is_same>{
+//     using type = decltype("std::is_same"_compStr);
+// };
+
+// createTemplatedTypeDefinition(std::is_base_of);
 
 }
 }
@@ -982,104 +1233,11 @@ using namespace compStringNS;
 using namespace compStringNS::compStringConvNS;
 
 template<typename T,typename containerType = void>
-struct VSA_template_parameter_pack_data;
+using VSA_template_parameter_pack_data = detailPPD::detail_TPPD<T,containerType>;
 
 namespace detail{
 
-template<typename T>
-struct type_wrapper{
-    using type = T;
-};
-
-template<size_t i,size_t target,typename T,typename... Ts>
-struct mp_list_at_impl{
-    static constexpr auto f(){
-        if constexpr(sizeof...(Ts) == 0){
-            return type_wrapper<T>{};
-        }else
-        if constexpr(i == target){
-            return type_wrapper<T>{};
-        }else{
-            return typename mp_list_at_impl<i+1,target,Ts...>::type{};
-        }
-    }
-    using type = decltype(f());
-};
-
-template<typename... T>
-struct mp_list{
-    static constexpr size_t size = sizeof...(T);
-
-    template<size_t i>
-    using at =typename mp_list_at_impl<0,i,T...>::type::type;
-
-    template<typename... other>
-    using append = mp_list<T...,other...>;
-};
-
-
-template<auto val>
-struct valueAsType{
-    using type = decltype(val);
-    static constexpr type value = val;
-};
-
-template<typename T>
-struct isTypeImpl{
-    static constexpr bool value = true;
-};
-template<auto val>
-struct isTypeImpl<valueAsType<val>>{
-    static constexpr bool value = false;
-};
-
-template<bool falseV,typename T, size_t i>
-struct typeAtImplFailerMsg{
-    using type = typename T::template at<i>;
-};
-
-template<typename T, size_t i>
-struct typeAtImplFailerMsg<false,T,i>{
-    using vWrap = typename T::template at<i>;
-    using msg = decltype("VSA_TPP_data::typeAt - tried to access template parameter at pos "_compStr)
-    ::template append<typename valueToCompString<i>::type>
-    ::template append<decltype(" is not a type, but a vlaue of type \'"_compStr)>
-    ::template append<typename typeToCompString<typename vWrap::type>::type>
-    ::template append<decltype("\' and eqaul to ")>
-    ::template append<typename valueToCompString<vWrap::value>::type>
-    ::template append<decltype("\n"_compStr)>;
-
-    static_assert(false,msg::sv);
-
-};
-
-
-template<typename T,bool isType, size_t indx>
-struct typeAtImpl{
-    using type = typeAtImplFailerMsg<isType,T,indx>::type;
-};
-
-template<bool falseV,typename T,size_t i>
-struct valueAtImplFailerMsg{
-    static constexpr auto value = T::template at<i>::value;
-};
-
-template<typename T, size_t i>
-struct valueAtImplFailerMsg<false,T,i>{
-    using msg = decltype("VSA_TPP_data::valueAt -  tried to access template parameter at pos "_compStr)
-    ::template append<typename valueToCompString<i>::type>
-    ::template append<decltype(" is not a value, but a type \'"_compStr)>
-    ::template append<typename typeToCompString<typename T::template at<i>>::type>
-    ::template append<decltype("\'\n"_compStr)>;
-
-
-    static_assert(false,msg::sv);
-};
-
-template<typename T, bool isValue, size_t indx>
-struct valueAtImpl{
-    static constexpr auto value = valueAtImplFailerMsg<isValue,T,indx>::value;
-};
+using namespace compStringNS::compStringConvNS::detailPPD;
 
 template<typename T>
 struct test_if_is_VSA_template_paremeter_pack_data_Impl{
@@ -1098,24 +1256,24 @@ struct test_if_is_VSA_template_paremeter_pack_data_Impl<VSA_template_parameter_p
 
 
 
-template<typename T,typename containerType>
-struct VSA_template_parameter_pack_data{
-    static constexpr size_t size = T::size;
-    template<size_t i>
-    static constexpr bool isType = detail::isTypeImpl<typename T::template at<i>>::value;
-    template<size_t i>
-    static constexpr bool isValue = !isType<i>;
-    template<size_t i>
-    using typeAt = typename detail::typeAtImpl<T,isType<i>,i>::type;
-    template<size_t i>
-    using typeStringAt = typename typeToCompString<typeAt<i>>::type;
-    template<size_t i>
-    static constexpr auto valueAt = detail::valueAtImpl<T,isValue<i>,i>::value;
-    template<size_t i>
-    using valueStringAt = typename valueToCompString<valueAt<i>>::type;
-    using container = containerType;
+// template<typename T,typename containerType>
+// struct VSA_template_parameter_pack_data{
+//     static constexpr size_t size = T::size;
+//     template<size_t i>
+//     static constexpr bool isType = detail::isTypeImpl<typename T::template at<i>>::value;
+//     template<size_t i>
+//     static constexpr bool isValue = !isType<i>;
+//     template<size_t i>
+//     using typeAt = typename detail::typeAtImpl<T,isType<i>,i>::type;
+//     template<size_t i>
+//     using typeStringAt = typename typeToCompString<typeAt<i>>::type;
+//     template<size_t i>
+//     static constexpr auto valueAt = detail::valueAtImpl<T,isValue<i>,i>::value;
+//     template<size_t i>
+//     using valueStringAt = typename valueToCompString<valueAt<i>>::type;
+//     using container = containerType;
     
-};
+// };
 
 template<typename T>
 struct test_if_is_VSA_template_paremeter_pack_data{
@@ -1392,8 +1550,41 @@ namespace{
         testType(const double&(*&&)(const char*,float&,bool));
         testType(int(* const&&)(char,int,double));
         testType(int(* const volatile&&)(char,int,double));
+        testType(int(********)(char,int,double));
+        testType(bool(* const&)(bool(*)(int),bool(*)(int)));
+        testType(int(* const volatile* const* const&&)(char,int,double));
+        testType(int(*)(char,int,double...));
+    
+    };
+
+
+
+    // namespace typeToStringDefinitions{
+    //         createTypeDefinition(some_none_fundamental_type);
+    //     }
 
     
+}
+
+template<bool a, typename T, bool b, typename U>
+struct myType{};
+
+namespace compStringNS::compStringConvNS::templatedTypeDefinitions{
+
+template<bool a, typename T, bool b, typename U>
+struct templatedTypeToCompString<myType<a,T,b,U>>:std::true_type{
+    using typeList = mp_list<valueAsType<a>,T,valueAsType<b>,U>;
+    using typeName = decltype("myType"_compStr);
+};
+}
+
+namespace{
+    template<typename T>
+    static constexpr auto tToSv = typeToCompString<T>::type::sv;
+    #define testType(x) static_assert(tToSv<x> == #x""sv,tToSv<x>);
+    struct TEST_template_types_toString{
+        using t0 = myType<false,int,true,long int>;
+        static_assert(tToSv<t0> == "myType<false,int,true,long int>"sv,tToSv<t0>);
     };
 }
 
@@ -1708,7 +1899,7 @@ struct is_comparitor_for_template_pack_VSA_message_line_impl<T,comparitor<char,c
         }else{
             if constexpr(!test_comparitor_ab<comparitor,typename T::typeAt<indx>, typename T::typeAt<offset>>::value){
                 using addOnMessage = typename decltype("could not create the comparitor type '"_compStr)
-                ::template append<typename templatedTypeToCompString<comparitor>::type>
+                ::template append<typename typeToCompString<comparitor<int,int>>::template templateName<>>
                 ::template append<decltype("' with the types '"_compStr)>
                 ::template append<typename typeToCompString<typename T::typeAt<indx>>::type>
                 ::template append< decltype("' and '"_compStr)>
@@ -1773,10 +1964,19 @@ struct myComparitor{
 
 namespace compStringNS{
 namespace compStringConvNS{
-        createTemplatedTypeDefinition(myComparitor);
-        createTypeDefinition(some_none_fundamental_type);
-    };
-};
+        namespace typeToStringDefinitions{
+            createTypeDefinition(some_none_fundamental_type);
+        }
+
+        namespace templatedTypeDefinitions{
+            template< typename A, typename B>
+            struct templatedTypeToCompString<myComparitor<A,B>>:std::true_type{
+            using typeList = mp_list<A,B>;
+            using typeName = decltype("myComparitor"_compStr);
+            };
+        }     
+}
+}
 
 int main() {
  
