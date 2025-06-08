@@ -112,9 +112,20 @@ This includes:
 All fundamental types ([as described by this page]((https://en.cppreference.com/w/cpp/language/types.html)), except for std::nullptr_t) are supported by default.
 Specifically, the following types are supported:
 ```cpp
-void, bool, char, signed char, unsigned char, short int, unsigned short int, int, unsigned int, long int, unsigned long int, long long int, unsigned long long int, float, double, long double 
+void, bool, char, signed char, unsigned char, short int, unsigned short int, int, unsigned int, 
+long int, unsigned long int, long long int, unsigned long long int, float, double, long double 
 ```
+Examples:
+```cpp
+using voidStr = typename typeToCompString<void>::type;
+static_assert(voidStr::sv == "void"sv);
 
+using ulliStr = typename typeToCompString<unsigned long long int>::type;
+static_assert(ulliStr::sv == "unsigned long long int"sv);
+
+using doubleStr = typename typeToCompString<double>::type;
+static_assert(doubleStr::sv == "double"sv);
+```
 
 
 	
