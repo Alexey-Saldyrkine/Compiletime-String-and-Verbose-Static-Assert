@@ -1,10 +1,9 @@
 # conversion to compString
-For convinces, there are several types that convert values (such as: 19, "2ab3",'l',...) and types (such as: bool, int, double,...) to a compString containing a string representation of them.<br>
+For convinces, there are two types that convert values (such as: 19, "2ab3",'l',...) and types (such as: bool, int, double,...) to a compString containing a string representation of them.<br>
 
 They are:
 - valueToCompString
 - typeToCompString
-- templatedTypeToCompString
 
 These types take the value or type that will be converted as a template parameter and have a member type named 'type' that is a compString containing the result of conversion.<Br>
 
@@ -87,12 +86,13 @@ namespace compStringConvNS{ //tempalte specializations need to be in the same na
 Conversion of a type to a compStrirng is done by using the helper type typeToCompString.<br>
 typeToCompString takes a  type as a template parameter and has a member type named 'type' which is the string representation of the type.<br>
 
-typeToCompString can be manually extended to convert other types.<br>
+typeToCompString can be manually extended to convert other types, such as, user-defined types.<br>
 
 ### if no conversion exists
 If no conversion for a type exists, the compString "[no name given to type]" will be returned.<br>
 
 typeToCompString can accept any type.<br>
+Templated types will have their own section, separate from the rest.<br>
 
 ## non-templated types to compString
 
@@ -109,7 +109,7 @@ This includes:
 	- array Types
 
 ### fundamental types
-All fundamental types ([as described by this page]((https://en.cppreference.com/w/cpp/language/types.html)), except for std::nullptr_t) are supported by default.
+All fundamental types ([as described by this page]((https://en.cppreference.com/w/cpp/language/types.html)), except for std::nullptr_t) are supported by default.<br>
 Specifically, the following types are supported:
 ```cpp
 void, bool, char, signed char, unsigned char, short int, unsigned short int, int, unsigned int, 
@@ -126,7 +126,31 @@ static_assert(ulliStr::sv == "unsigned long long int"sv);
 using doubleStr = typename typeToCompString<double>::type;
 static_assert(doubleStr::sv == "double"sv);
 ```
+### user-defined types
+user-defined types can be converted to a compString, if it has been added to the possible conversion types.<br>
+Specifically user-defined types (and fundamental types) use SFINAE and template specialization to choose which compString represents a type.<br>
+In the namespace ::compStringNS::compStringConvNS::typeToCompStringDefinitions there is the type typeToCompStringInter<typename T>.<br>
+To add a type to the list of convertible types you will need to create a template specialization of typeToCompStringInter with the wanted type.<br>
+Example:
+```cpp
 
+struct myType{}; // the type we will add to the convertible type list
+
+namespace compStringNS::compStringConvNS::typeToStringDefinitions{
+	template<> 
+	struct typeToCompStringInter<myType>{ // the specialization of typeToCompStringInter
+		using type = decltype("myType"_compStr); // the compString that will be returned 	
+	};
+}
+```
+Alternatively you can use the macro createTypeDefinition within the namespace to automatically define the specialization and compString:
+```cpp
+struct myType{}; // the type we will add to the convertible type list
+
+namespace compStringNS::compStringConvNS::typeToStringDefinitions{
+	createTypeDefinition(myType); // automatically create the template specialization and compString, adding it to the convertible types	
+}
+```
 
 	
 	
