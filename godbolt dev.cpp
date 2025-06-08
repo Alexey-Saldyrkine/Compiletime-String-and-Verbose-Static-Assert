@@ -379,9 +379,13 @@ namespace compStringConvNS{
 
 namespace typeToStringDefinitions{
 
+// template<typename T>
+// int render();
+
 template<typename T>
 struct typeToCompStringInter{
     using type = decltype("[no name given to type]"_compStr);
+    //static constexpr auto i = render<T>();
 };
 
 #define createTypeDefinition(x) template<> struct typeToCompStringInter<x>{ using type = decltype(#x ""_compStr);};
@@ -547,10 +551,14 @@ namespace templatedTypeDefinitions{
 using detailPPD::valueAsType;
 using detailPPD::mp_list;
 
+
+
+
 template<typename T>
 struct templatedTypeToCompString:std::false_type{
     using typeList = void; // should never be used
-    using typeName = decltype("not a template type"_compStr);
+    using typeName = decltype("not a defiend template type"_compStr);
+   
 };
 
 }
@@ -582,10 +590,10 @@ struct typeToCompString_cv{
 template<typename msg,typename T, typename... Ts>
 struct typesToStringComma{
     static constexpr auto f(){  
-        using str = typename typeToCompStringInterm<T,false>::type;
+        using str = typename typeToCompString<T>::type;
         using newMsg = typename msg::template append<str>;
         if constexpr(sizeof...(Ts) != 0){
-            using retMsg = typename newMsg::template append<decltype(","_compStr)>;
+            using retMsg = typename newMsg::template append<decltype(", "_compStr)>;
             return typename typesToStringComma<retMsg,Ts...>::type{};
         }else{
             return newMsg{};
@@ -948,8 +956,8 @@ struct integerValToCompString{
              return t{};
         }
     }
-   // using inter =
-    using type = decltype(f());//= typename detail::compStringReverse<inter>::type;
+
+    using type = decltype(f());
 };
 
 template<auto val>
@@ -976,55 +984,111 @@ constexpr size_t getCstrLength(){
     return ret;
 };
 
-template<bool is_pointer,typename T>
-struct TTCS_removePointer_cond{
-    using type = T;
-};
-
-template<typename T>
-struct TTCS_removePointer_cond<true,T>{
-    using type = std::remove_pointer_t<T>;
-};
-
-template<bool is_ref, typename T>
-struct TTCS_removeRef_cond{
-    using type = T;
-};
-
-template<typename T>
-struct TTCS_removeRef_cond<true,T>{
-    using type = std::remove_reference_t<T>;
-};
-
-
-
-template<bool, typename T>
-struct SFNAI_If_apply{
-    using type = T;
-};
-
 template<typename T>
 struct req_remove_ref_pointer{
-    static constexpr bool is_pointer = std::is_pointer_v<T>;
-    static constexpr bool is_ref = std::is_reference_v<T>;
-    using t = typename TTCS_removeRef_cond<is_ref,typename TTCS_removePointer_cond<is_pointer,T>::type>::type;
-    static constexpr bool cond = std::is_pointer_v<t> || std::is_reference_v<t>;
-   
-    using type = typename SFNAI_If_apply<cond,t>::type;
+    static constexpr bool isMemberPtr = false;
+    using type = T;
 };
 
 template<typename T>
-struct SFNAI_If_apply<true,T>{
+struct req_remove_ref_pointer<T&>{
     using type = typename req_remove_ref_pointer<T>::type;
+    static constexpr bool isMemberPtr = req_remove_ref_pointer<T>::isMemberPtr;
 };
+
+template<typename T>
+struct req_remove_ref_pointer<T&&>{
+    using type = typename req_remove_ref_pointer<T>::type;
+    static constexpr bool isMemberPtr = req_remove_ref_pointer<T>::isMemberPtr;
+};
+
+template<typename T>
+struct req_remove_ref_pointer<T*>{
+    using type = typename req_remove_ref_pointer<T>::type;
+    static constexpr bool isMemberPtr = req_remove_ref_pointer<T>::isMemberPtr;
+};
+
+template<typename T>
+struct req_remove_ref_pointer<T* const>{
+    using type = typename req_remove_ref_pointer<T>::type;
+    static constexpr bool isMemberPtr = req_remove_ref_pointer<T>::isMemberPtr;
+};
+
+template<typename T>
+struct req_remove_ref_pointer<T* volatile>{
+    using type = typename req_remove_ref_pointer<T>::type;
+    static constexpr bool isMemberPtr = req_remove_ref_pointer<T>::isMemberPtr;
+};
+
+template<typename T>
+struct req_remove_ref_pointer<T* const volatile>{
+    using type = typename req_remove_ref_pointer<T>::type;
+    static constexpr bool isMemberPtr = req_remove_ref_pointer<T>::isMemberPtr;
+};
+
+template<typename T, typename U>
+struct req_remove_ref_pointer<T U::*>{
+    using type = T U::*;
+    static constexpr bool isMemberPtr = true;
+};
+
 
 template<typename T>
 struct typeToCompString_is_base_a_function{
     using type = typename req_remove_ref_pointer<T>::type;
-    static constexpr bool value = std::is_function_v<type>;
+    static constexpr bool isMemberPtr = req_remove_ref_pointer<T>::isMemberPtr;
+    static constexpr bool value = std::is_function_v<type> ;
 };
 
+template<typename T>
+struct typeToString_array;
 
+template<typename T>
+struct typeToString_array<T[]>{
+    using type =typename typeToCompString<T>::type::template append<decltype("[]"_compStr)>;
+};
+
+template<typename T, size_t N>
+struct typeToString_array<T[N]>{
+    using type =typename typeToCompString<T>::type::template append<decltype("["_compStr)>::template append<typename valueToCompString<N>::type>::append<decltype("]"_compStr)>;
+};
+
+template<typename T, bool funcOverride>
+struct typeOrTemplateToCompString;
+
+template<typename T, bool>
+struct typeToString_memberPointer;
+
+template<typename T, typename U, bool bv>
+struct typeToString_memberPointer<T U::*,bv>{
+    static constexpr auto f(){
+        if constexpr(std::is_member_function_pointer_v<T U::*>){
+             using Tstr0 = typename typeOrTemplateToCompString<T,bv>::type;
+             static constexpr size_t pos0 = Tstr0::template find<decltype("("_compStr)>-1;
+             using Tstr = Tstr0::template insert<pos0,decltype("(*)"_compStr)>;
+             using Ustr = typename typeOrTemplateToCompString<U,bv>::type::template append<decltype("::"_compStr)>;
+             static constexpr size_t pos = Tstr::template find<decltype("*"_compStr)> -1;
+             using retStr = typename Tstr::template insert<pos,Ustr>;
+             return retStr{};
+        }else{
+            using Tstr = typename typeOrTemplateToCompString<T*,bv>::type;
+            using Ustr = typename typeOrTemplateToCompString<U,bv>::type::template append<decltype("::"_compStr)>::template prepend<decltype(" "_compStr)>;
+            static constexpr size_t pos = Tstr::template find<decltype("*"_compStr)> -1;
+            using retStr = typename Tstr::template insert<pos,Ustr>;
+            return retStr{};
+        }
+    }
+    
+    using type = decltype(f());
+};
+
+template<typename>
+struct removeMemberPtr;
+
+template<typename T, typename U>
+struct removeMemberPtr<T U::*>{
+    using type = T;
+};
 
 
 template<typename T, bool funcSigOverride>
@@ -1037,8 +1101,24 @@ struct typeToCompStringInterm{
     // if not base type, the repeat
     // now T will be a base type of some kind
     static constexpr auto f(){
+            if constexpr(!funcSigOverride && detail::typeToCompString_is_base_a_function<T>::isMemberPtr ){
+
+                 using ptrStr = typename typeOrTemplateToCompString<T,true>::type;
+                 using memberPtrT = typename detail::typeToCompString_is_base_a_function<T>::type;
+                 using baseType = typename removeMemberPtr<memberPtrT>::type;
+                 using baseStr = typename typeToString_memberPointer<memberPtrT,false>::type;
+                 if constexpr(! ptrStr::template equal<decltype(""_compStr)>){
+                    static constexpr size_t pos0 = baseStr::template find<decltype("("_compStr)>;
+                    static constexpr size_t pos = baseStr::template find<decltype("*"_compStr),pos0>;
+                    using retStr = typename baseStr::template insert<pos,ptrStr>;
+                    return retStr{};
+                }else{
+                    return baseStr{};
+                }
+                 //return ptrStr{};
+            }else
             if constexpr(!funcSigOverride && detail::typeToCompString_is_base_a_function<T>::value){
-                using ptrStr = typename typeToCompStringInterm<T,true>::type;
+                using ptrStr = typename typeOrTemplateToCompString<T,true>::type;
                 using baseFunc = typename detail::typeToCompString_is_base_a_function<T>::type;
                 using funcStr = typename detail::typeToCompString_function_type<baseFunc>::type;
                 if constexpr(! ptrStr::template equal<decltype(""_compStr)>){
@@ -1050,6 +1130,9 @@ struct typeToCompStringInterm{
                     return funcStr{};
                 }
             }else
+            if constexpr(funcSigOverride && std::is_member_pointer_v<T>){
+                return decltype(""_compStr){};
+            }else
            if constexpr(funcSigOverride && std::is_function_v<T>){
                 return decltype(""_compStr){};
                 //return typename detail::typeToCompString_function_type<T>::type{};
@@ -1057,30 +1140,32 @@ struct typeToCompStringInterm{
            if constexpr(std::is_reference_v<T>){
                 using t = std::remove_reference_t<T>;
                 if constexpr(std::is_lvalue_reference_v<T>){
-                    return typename typeToCompStringInterm<t,funcSigOverride>::type::template append<decltype("&"_compStr)>{};
+                    return typename typeOrTemplateToCompString<t,funcSigOverride>::type::template append<decltype("&"_compStr)>{};
                 }else{
-                    return typename typeToCompStringInterm<t,funcSigOverride>::type::template append<decltype("&&"_compStr)>{};
+                    return typename typeOrTemplateToCompString<t,funcSigOverride>::type::template append<decltype("&&"_compStr)>{};
                 }
            }else
            if constexpr(std::is_const_v<T> || std::is_volatile_v<T>){
                 using cvStr = typename detail::typeToCompString_cv<T>::type;
                 using t = std::remove_cv_t<T>;
                 if constexpr(std::is_pointer_v<T>){
-                    return typename typeToCompStringInterm<t,funcSigOverride>::type::template append<decltype(" "_compStr)>::template append<cvStr>{};
+                    return typename typeOrTemplateToCompString<t,funcSigOverride>::type::template append<decltype(" "_compStr)>::template append<cvStr>{};
                 }else{
-                    using retStr =  cvStr::template append<decltype(" "_compStr)>::template append<typename typeToCompStringInterm<t,funcSigOverride>::type>;
+                    using retStr =  cvStr::template append<decltype(" "_compStr)>::template append<typename typeOrTemplateToCompString<t,funcSigOverride>::type>;
                     return retStr{};
                 }
            }else
            if constexpr(std::is_pointer_v<T>){
                 using t = std::remove_pointer_t<T>;
-                return typename typeToCompStringInterm<t,funcSigOverride>::type::template append<decltype("*"_compStr)>{};
+                return typename typeOrTemplateToCompString<t,funcSigOverride>::type::template append<decltype("*"_compStr)>{};
                 
-           }else{
-                
+           }else{   
+                    if constexpr(std::is_array_v<T>){
+                        return typename typeToString_array<T>::type{};
+                    }else{
                     // fundamental and class types
                     return typename typeToStringDefinitions::typeToCompStringInter<T>::type{};
-                
+                    }
            }
     }
     using type = decltype(f());
@@ -1099,7 +1184,7 @@ struct templatedTypeToCompString_req{
             using retmsg = msg::template append<typename Data::template stringAt<i>>;
             return retmsg{};
         }else{
-            using retmsg = msg::template append<typename Data::template stringAt<i>>::template append<decltype(","_compStr)>;
+            using retmsg = msg::template append<typename Data::template stringAt<i>>::template append<decltype(", "_compStr)>;
             return typename templatedTypeToCompString_req<i+1,Data,retmsg>::type{};
         }
     }
@@ -1117,13 +1202,16 @@ struct templatedTypeToCompString{
     using type = templateName::template append<decltype("<"_compStr)>::template append<parameterStr>::template append<decltype(">"_compStr)>;
 };
 
-template<typename T>
+
+
+template<typename T, bool funcOverride>
 struct typeOrTemplateToCompString{
     static constexpr auto f(){
         if constexpr(templatedTypeDefinitions::templatedTypeToCompString<T>::value){
             return typename templatedTypeToCompString<T>::type{};
         }else{
-            return typename detail::typeToCompStringInterm<T,false>::type{};
+           
+            return typename detail::typeToCompStringInterm<T,funcOverride>::type{};
         }
     }
 
@@ -1135,7 +1223,7 @@ struct typeOrTemplateToCompString{
 
 template<typename T>
 struct typeToCompString{
-    using type = typename detail::typeOrTemplateToCompString<T>::type;
+    using type = typename detail::typeOrTemplateToCompString<T,false>::type;
 
     template<typename = void>
     using templateName = typename templatedTypeDefinitions::templatedTypeToCompString<T>::typeName;
@@ -1512,6 +1600,7 @@ namespace{
         testType(char*);
         testType(char* const);
         testType(char* volatile);
+        testType(char* volatile* const* volatile* const volatile*);
         testType(char* const volatile);
         testType(const char* const);
         testType(const volatile char* const volatile);
@@ -1532,51 +1621,56 @@ namespace{
         testType(const volatile double);
         testType(bool());
         testType(bool(char));
-        testType(bool(char,int));
-        testType(int(char,int,double));
-        testType(int(char,int,double) const);
-        testType(int(char,int,double) const volatile);
-        testType(int(char,int,double)&);
-        testType(int(char,int,double)&&);
-        testType(int(char,int,double) volatile&&);
-        testType(int(*)(char,int,double));
-        testType(const int(*)(char,int,double));
-        testType(int(char,int,double) const&);
-        testType(int(char,int,double) volatile&&);
-        testType(const int(*&)(char,int,double));
-        testType(const int(*&&)(char,int,double));
-        testType(const double&(const char*,float&,bool));
-        testType(const double&(const char*,float&,bool) const volatile&&);
-        testType(const double&(*&&)(const char*,float&,bool));
-        testType(int(* const&&)(char,int,double));
-        testType(int(* const volatile&&)(char,int,double));
-        testType(int(********)(char,int,double));
-        testType(bool(* const&)(bool(*)(int),bool(*)(int)));
-        testType(int(* const volatile* const* const&&)(char,int,double));
-        testType(int(*)(char,int,double...));
+        testType(bool(char, int));
+        testType(int(char, int, double));
+        testType(int(char, int, double) const);
+        testType(int(char, int, double) const volatile);
+        testType(int(char, int, double)&);
+        testType(int(char, int, double)&&);
+        testType(int(char, int, double) volatile&&);
+        testType(int(*)(char, int, double));
+        testType(const int(*)(char, int, double));
+        testType(int(char, int, double) const&);
+        testType(int(char, int, double) volatile&&);
+        testType(const int(*&)(char, int, double));
+        testType(const int(*&&)(char, int, double));
+        testType(const double&(const char*, float&, bool));
+        testType(const double&(const char*, float&, bool) const volatile&&);
+        testType(const double&(*&&)(const char*, float&, bool));
+        testType(int(* const&&)(char, int, double));
+        testType(int(* const volatile&&)(char, int, double));
+        testType(int(********)(char, int, double));
+        testType(bool(* const&)(bool(*)(int), bool(*)(int)));
+        testType(int(* const volatile* const* const&&)(char, int, double));
+        testType(int(*)(char, int, double...));
+        testType(bool[]);
+        testType(int[123]);
+        testType(int** const volatile* const****);
     
     };
-
-
-
-    // namespace typeToStringDefinitions{
-    //         createTypeDefinition(some_none_fundamental_type);
-    //     }
-
-    
 }
 
 template<bool a, typename T, bool b, typename U>
-struct myType{};
+struct myType{
+    const int& f(int,bool);
+    const volatile double&& h(const int&, bool, myType<0,float,0,float>&) const volatile;
+    volatile int g;
+};
 
 namespace compStringNS::compStringConvNS::templatedTypeDefinitions{
+
+
 
 template<bool a, typename T, bool b, typename U>
 struct templatedTypeToCompString<myType<a,T,b,U>>:std::true_type{
     using typeList = mp_list<valueAsType<a>,T,valueAsType<b>,U>;
     using typeName = decltype("myType"_compStr);
+    
 };
 }
+
+template<typename T>
+int render();
 
 namespace{
     template<typename T>
@@ -1584,7 +1678,19 @@ namespace{
     #define testType(x) static_assert(tToSv<x> == #x""sv,tToSv<x>);
     struct TEST_template_types_toString{
         using t0 = myType<false,int,true,long int>;
-        static_assert(tToSv<t0> == "myType<false,int,true,long int>"sv,tToSv<t0>);
+        static_assert(tToSv<t0> == "myType<false, int, true, long int>"sv,tToSv<t0>);
+        using t1 = t0[321];
+        static_assert(tToSv<t1> == "myType<false, int, true, long int>[321]"sv,tToSv<t1>);
+        using t2 = decltype(&t0::f);
+        //static constexpr int h= render<t2>();
+        static_assert(tToSv<t2> == "const int&(myType<false, int, true, long int>::*)(int, bool)"sv,tToSv<t2>);
+        using t3 = decltype(&t0::g);
+       // static constexpr int hw= render<t3>();
+        static_assert(tToSv<t3> == "volatile int myType<false, int, true, long int>::*"sv,tToSv<t3>);
+        using t4 = decltype(&t0::h)* const volatile** const*** volatile****;
+        //static constexpr int hw= render<t4>();
+        static_assert(tToSv<t4> == "const volatile double&&(myType<false, int, true, long int>::** const volatile** const*** volatile****)(const int&, bool, myType<false, float, false, float>&) const volatile"sv,tToSv<t4>);
+        
     };
 }
 
