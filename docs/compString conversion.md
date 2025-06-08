@@ -17,7 +17,11 @@ Currently value to compString supports conversion of values that are one of the 
 - integrals
 - null terminated char arrays
 
-valueToCompString can be manually extended to convert other types.<br>
+valueToCompString can be manually extended to convert values of other types.<br>
+
+### If no conversion exists
+If no conversion for a value of type T exists, the compString "[no value to compString conversion for the type 'T']" will be returned.<br>
+Where T will be the result of typeToCompString\<T>.<br>
 
 ### bool
 A value of type bool (true, false) will be converted to a compString containing "true" and "false" respectively.<br>
@@ -78,9 +82,36 @@ namespace compStringConvNS{ //tempalte specializations need to be in the same na
 }
 ```
 
-### If no conversion exists
-If no conversion for a value of type T exists, the compString "[no value to compString conversion for the type 'T']" will be returned.<br>
-Where T will be the result of typeToCompString\<T>.<br>
-
 ## type To compString 
+
+Conversion of a type to a compStrirng is done by using the helper type typeToCompString.<br>
+typeToCompString takes a  type as a template parameter and has a member type named 'type' which is the string representation of the type.<br>
+
+typeToCompString can be manually extended to convert other types.<br>
+
+### if no conversion exists
+If no conversion for a type exists, the compString "[no name given to type]" will be returned.<br>
+
+typeToCompString can accept non-templated types and templated types, as these two categories of types work a little differently, they will be split into different parts.<br>
+
+## non-templated types to compString
+
+This includes:
+- fundamental types
+- user-defined types
+- const volatile qualifiers
+- compound types:
+	- lvalue references
+	- rvalue references
+	- pointer types
+	- pointer-to-member types
+	- function types
+	- array Types
+
+
+	
+	
+
+
+
 
