@@ -152,11 +152,11 @@ namespace compStringNS::compStringConvNS::typeToStringDefinitions{
 }
 ```
 
-__NOTE:__ you should __not__ add cv qualified or compound(&,&&,*) types to the convertible types, only the basic, non qualified, non cv qualified type
-Example:
+__NOTE:__ you should __NOT__ add cv qualified or compound(&,&&,*) types to the convertible types, only the one basic, non qualified, non cv qualified type.<br>
+Example:<br>
 You should only add myType, not any of the following:<br>
 ```cpp
-	myType&, const myType, myType*, const volatile myType***** const, ... so on and so fourth
+myType&, const myType, myType*, const volatile myType***** const, ... so on and so fourth
 ``` 
 	
 
