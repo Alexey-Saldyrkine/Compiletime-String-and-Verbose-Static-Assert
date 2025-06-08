@@ -92,14 +92,14 @@ typeToCompString can be manually extended to convert other types.<br>
 ### if no conversion exists
 If no conversion for a type exists, the compString "[no name given to type]" will be returned.<br>
 
-typeToCompString can accept non-templated types and templated types, as these two categories of types work a little differently, they will be split into different parts.<br>
+typeToCompString can accept any type.<br>
 
 ## non-templated types to compString
 
 This includes:
 - fundamental types
 - user-defined types
-- const volatile qualifiers
+- const volatile qualified types
 - compound types:
 	- lvalue references
 	- rvalue references
@@ -107,6 +107,14 @@ This includes:
 	- pointer-to-member types
 	- function types
 	- array Types
+
+### fundamental types
+All fundamental types ([as described by this page]((https://en.cppreference.com/w/cpp/language/types.html)), except for std::nullptr_t) are supported by default.
+Specifically, the following types are supported:
+```cpp
+void, bool, char, signed char, unsigned char, short int, unsigned short int, int, unsigned int, long int, unsigned long int, long long int, unsigned long long int, float, double, long double 
+```
+
 
 
 	
