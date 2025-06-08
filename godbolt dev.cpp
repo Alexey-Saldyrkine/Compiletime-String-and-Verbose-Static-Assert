@@ -1589,6 +1589,8 @@ namespace{
         #define testType(x) static_assert(tToSv<x> == #x""sv,tToSv<x>);
         testType(void);
         testType(char);
+        testType(signed char);
+        testType(unsigned char);
         testType(char&);
         testType(char&&);
         testType(const char&);
@@ -2068,8 +2070,8 @@ struct myComparitor{
     bool operator()(A a, B b);
 };
 
-namespace compStringNS{
-namespace compStringConvNS{
+namespace compStringNS::compStringConvNS{
+
         namespace typeToStringDefinitions{
             createTypeDefinition(some_none_fundamental_type);
         }
@@ -2081,7 +2083,7 @@ namespace compStringConvNS{
             using typeName = decltype("myComparitor"_compStr);
             };
         }     
-}
+
 }
 
 int main() {
