@@ -88,9 +88,6 @@ typeToCompString takes a  type as a template parameter and has a member type nam
 
 typeToCompString can be manually extended to convert other types, such as, user-defined types.<br>
 
-### if no conversion exists
-If no conversion for a type exists, the compString "[no name given to type]" will be returned.<br>
-
 typeToCompString can accept any type.<br>
 Templated types will have their own section, separate from the rest.<br>
 
@@ -116,6 +113,7 @@ long int, unsigned long int, long long int, unsigned long long int, float, doubl
 ```
 Examples:
 ```cpp
+
 using voidStr = typename typeToCompString<void>::type;
 static_assert(voidStr::sv == "void"sv);
 
@@ -163,6 +161,10 @@ Templated types can be added, but will only trigger if two conditions are met:
 For the templated type T and the type that is being converted U
 - std::is_same_v<T,U> evaluates to true
 - the template of T has not been added to the convertible template types
+
+### if no conversion exists
+If no conversion for a type exists, the compString "[no name given to type]" will be returned.<br>
+
 
 ### const volatile qualifiers 	
 
@@ -253,3 +255,30 @@ using T1 = typename typeToCompString<&myType::memF>; // will be compString conta
 
 ```
 
+## function types
+During the conversion process of the type T, if T deduced to a function type R(Args...) including variations of cv-qualifiers, references, noexcept and variadic functions.<br>
+R and each Args types are converted to a comporting and the compString "R(Args0, Arg1, ..., ArgsN)REF CV NOEXCEPT";
+
+Examples:
+```cpp
+
+using T0 = typename typeToCompString<int(int,bool)&>; // will be compString containing "int(int, bool)&"
+
+using T1 = typename typeToCompString<int(int,bool...) const>; // will be compString containing "int(int, bool...) const"
+
+using T1 = typename typeToCompString<int(int,bool,double...) const volatile&& noexcept>; // will be compString containing "int(int, bool, double...) const volatile&& noexcept"
+
+```
+
+## Array types
+During the conversion process of the type T, if T deduced to U[] or U[N], then U and N are converted to compString and the compString "U[]" or "U[N]" is returned.<br>
+
+Examples:
+```cpp
+
+using T0 = typename typeToCompString<bool[]>; // will be compString containing "bool[]"
+
+using T1 = typename typeToCompString<int[123]>; // will be compString containing "int[123]"
+
+
+```
