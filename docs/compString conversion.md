@@ -124,8 +124,8 @@ using doubleStr = typename typeToCompString<double>::type;
 static_assert(doubleStr::sv == "double"sv);
 ```
 ### user-defined types
-user-defined types can be converted to a compString, if it has been added to the possible conversion types.<br>
-Specifically user-defined types (and fundamental types) use SFINAE and template specialization to choose which compString represents a type.<br>
+user-defined types can be converted to a compString, if it has been added to the list of possible conversion types.<br>
+User-defined types (and the fundamental types, by extension) use SFINAE and template specialization to choose which compString represents a type.<br>
 In the namespace ::compStringNS::compStringConvNS::typeToCompStringDefinitions there is the type typeToCompStringInter<typename T>.<br>
 To add a type to the list of convertible types you will need to create a template specialization of typeToCompStringInter with the wanted type.<br>
 Example:
