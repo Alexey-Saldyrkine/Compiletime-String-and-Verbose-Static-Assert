@@ -101,8 +101,7 @@ This includes:
 - user-defined types
 - const volatile qualified types
 - compound types:
-	- lvalue references
-	- rvalue references
+	- references
 	- pointer types
 	- pointer-to-member types
 	- function types
@@ -184,8 +183,73 @@ using T2 = typename typeToCompString<const volatile int* const* volatile>::type;
 using T3 = typename typeToCompString<volatile const int>::type; // will be compString containing "const volatile int"
 
 ```
- 
+
+## compound types
+
+## lvalue and rvalue references 
+
+During the conversion processes of the type T, if T can be deduced to U& or U&&, then U is converted to a compString, and the appropriate string "&" or "&&" is appended.<br>
+
+Examples:
+
+```cpp
+
+Using T0 = typename typeToCompString<int&>; // will be compString containing "int&"
+
+Using T1 = typename typeToCompString<int &&>; // will be compString containing "int&&"
+
+Using T2 = typename typeToCompString<int* const&>; // will be compString containing "int* const&"
+
+```
+
+## pointer types
+
+During the conversion process of the type T, if the base type of T is not a function type and can be deduced to U*, then U is converted to a compString and "*" will be appended.<br>
+
+Examples:
+```cpp
+
+using T0 = typename typeToCompString<int*>; // will be compString containing "int*"
+
+Using T1 = typename typeToCompString<int**>; // will be compString containing "int**"
+
+``` 
+
+### function pointer types
+
+During the conversion process of the type T, if the base type of T is a function type F and if during the conversion process there are one or more pointer types identified, 
+then the function type F is converted to a compString FStr and all the pointers and their qualifiers are converted to a compString PtrStr. The compString "(PtrStr)" will be inserted between the return type and arguments of Str.<br>
+
+Example:
+```cpp
+
+using T0 = typename typeToCompString<int(*)(int)>; // will be compString containing "int(*)(int)"
+
+using T1 = typename typeToCompString<int(***)(int)>; // will be compString containing "int(***)(int)"
+
+```
+
+## pointer-to-member types
+
+During the conversion process of the type T, if T be deduced to H U::*, U is converted into the compString Hstr and then the steps for pointer types follow with PtrStr being "U::*".<br>
+
+Example:
+
+```cpp
+
+struct myType{
+	int memC;
+	int memF(int);
+};
+
+namespace compStringNS::compStringConvNS::typeToStringDefinitions{
+	createTypeDefinition(myType); //  adding it to the convertible types	
+}
+
+using T0 = typename typeToCompString<&myType::memC>; // will be compString containing "int myType::*"
+
+using T1 = typename typeToCompString<&myType::memF>; // will be compString containing "int(myType::*)(int)"
 
 
-
+```
 
