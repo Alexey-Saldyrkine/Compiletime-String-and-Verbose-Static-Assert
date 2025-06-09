@@ -105,7 +105,7 @@ This includes:
 	- array Types
 
 ### fundamental types
-All fundamental types ([as described by this page]((https://en.cppreference.com/w/cpp/language/types.html)), except for std::nullptr_t) are supported by default.<br>
+All fundamental types ([as described by this page](https://en.cppreference.com/w/cpp/language/types.html)), except for std::nullptr_t) are supported by default.<br>
 Specifically, the following types are supported:
 ```cpp
 void, bool, char, signed char, unsigned char, short int, unsigned short int, int, unsigned int, 
