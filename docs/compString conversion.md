@@ -145,7 +145,7 @@ Alternatively you can use the macro createTypeDefinition within the namespace to
 struct myType{}; // the type we will add to the convertible type list
 
 namespace compStringNS::compStringConvNS::typeToStringDefinitions{
-	createTypeDefinition(myType); // automatically create the template specialization and compString, adding it to the convertible types	
+	createTypeDefinition(myType); // automatically create the template specialization and compString "mtType", adding it to the convertible types	
 }
 ```
 
@@ -188,7 +188,7 @@ using T3 = typename typeToCompString<volatile const int>::type; // will be compS
 
 ## compound types
 
-## lvalue and rvalue references 
+### lvalue and rvalue references 
 
 During the conversion processes of the type T, if T can be deduced to U& or U&&, then U is converted to a compString, and the appropriate string "&" or "&&" is appended.<br>
 
@@ -204,7 +204,7 @@ Using T2 = typename typeToCompString<int* const&>; // will be compString contain
 
 ```
 
-## pointer types
+### pointer types
 
 During the conversion process of the type T, if the base type of T is not a function type and can be deduced to U*, then U is converted to a compString and "*" will be appended.<br>
 
@@ -231,7 +231,7 @@ using T1 = typename typeToCompString<int(***)(int)>; // will be compString conta
 
 ```
 
-## pointer-to-member types
+### pointer-to-member types
 
 During the conversion process of the type T, if T be deduced to H U::*, U is converted into the compString Hstr and then the steps for pointer types follow with PtrStr being "U::*".<br>
 
@@ -255,7 +255,7 @@ using T1 = typename typeToCompString<&myType::memF>; // will be compString conta
 
 ```
 
-## function types
+### function types
 During the conversion process of the type T, if T deduced to a function type R(Args...) including variations of cv-qualifiers, references, noexcept and variadic functions.<br>
 R and each Args types are converted to a comporting and the compString "R(Args0, Arg1, ..., ArgsN)REF CV NOEXCEPT";
 
@@ -270,7 +270,7 @@ using T1 = typename typeToCompString<int(int,bool,double...) const volatile&& no
 
 ```
 
-## Array types
+### Array types
 During the conversion process of the type T, if T deduced to U[] or U[N], then U and N are converted to compString and the compString "U[]" or "U[N]" is returned.<br>
 
 Examples:
