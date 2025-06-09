@@ -152,13 +152,39 @@ namespace compStringNS::compStringConvNS::typeToStringDefinitions{
 }
 ```
 
-__NOTE:__ you should __NOT__ add cv qualified or compound(&,&&,*) types to the convertible types, only the one basic, non qualified, non cv qualified type.<br>
+__NOTE:__ you should __NOT__ add cv qualified or compound(&,&&,*) types to the convertible types, only the one basic, non compound, non cv qualified type.<br>
 Example:<br>
 You should only add myType, not any of the following:<br>
 ```cpp
 myType&, const myType, myType*, const volatile myType***** const, ... so on and so fourth
 ``` 
-	
+If you do add a cv-qualified and or compound type, it will most likely never be used, as in the process of converting a type to compString it is gradually striped of cv-qualifiers and compounds.
+
+Templated types can be added, but will only trigger if two conditions are met:
+For the templated type T and the type that is being converted U
+- std::is_same_v<T,U> evaluates to true
+- the template of T has not been added to the convertible template types
+
+### const volatile qualifiers 	
+
+During the conversion process of the type T, if T can be deduced to const U, volatile U, or const volatile U, then the type U is converted to a compString.<br>
+Depending on if U is a pointer or not, the appropriate compString "const", "volatile", "const volatile" will be prepended or appended.<br>
+__NOTE__: a type given as 'volatile const U' will be converted to "const volatile U" __not__ "volatile const U"<br>
+Const will always come before volatile.<br>
+
+Examples:<br>
+```cpp
+
+using T0 = typename typeToCompString<const int>::type; // will be compString containing "const int"
+
+using T1 = typename typeToCompString<int* volatile>::type; // will be compString containing "int* volatile"
+
+using T2 = typename typeToCompString<const volatile int* const* volatile>::type; // will be compString containing "const volatile int* const* volatile"
+
+using T3 = typename typeToCompString<volatile const int>::type; // will be compString containing "const volatile int"
+
+```
+ 
 
 
 
