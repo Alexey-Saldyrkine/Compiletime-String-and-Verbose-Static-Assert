@@ -164,6 +164,19 @@ For the templated type T and the type that is being converted U
 
 ### if no conversion exists
 If no conversion for a type exists, the compString "[no name given to type]" will be returned.<br>
+__NOTE:__ this only applies to the base type, if a compound and or cv-qualified type is given it will return a compString containing the cv-qualifiers and or pointers and references.<br>
+Example:
+```cpp
+struct nonAddedT{}; // this type will mot be added to the convertible types
+
+using U = typename typeToCompString<nonAddedT>::type;
+static_assert(U::sv == "[no name given to type]");
+using T = typename typeToCompString<const nonAddedT&>::type;
+static_assert(T::sv == "const [no name given to type]&");
+using H = typeToCompString<volatile nonAddedT* const* volatile*&&>::type;
+static_assert(H::sv == "volatile [no name given to type]* const* volatile*&&");
+
+```
 
 
 ### const volatile qualifiers 	
@@ -220,7 +233,7 @@ Using T1 = typename typeToCompString<int**>; // will be compString containing "i
 ### function pointer types
 
 During the conversion process of the type T, if the base type of T is a function type F and if during the conversion process there are one or more pointer types identified, 
-then the function type F is converted to a compString FStr and all the pointers and their qualifiers are converted to a compString PtrStr. The compString "(PtrStr)" will be inserted between the return type and arguments of Str.<br>
+then the function type F is converted to a compString FuncStr and all the pointers and their qualifiers are converted to a compString PtrStr. The compString "(PtrStr)" will be inserted between the return type and arguments of FuncStr.<br>
 
 Example:
 ```cpp
@@ -257,7 +270,7 @@ using T1 = typename typeToCompString<&myType::memF>; // will be compString conta
 
 ### function types
 During the conversion process of the type T, if T deduced to a function type R(Args...) including variations of cv-qualifiers, references, noexcept and variadic functions.<br>
-R and each Args types are converted to a comporting and the compString "R(Args0, Arg1, ..., ArgsN)REF CV NOEXCEPT";
+R and each Args types are converted to a compString and the compString "R(Args0, Arg1, ..., ArgsN)REF CV NOEXCEPT" is returned;
 
 Examples:
 ```cpp
@@ -266,7 +279,7 @@ using T0 = typename typeToCompString<int(int,bool)&>; // will be compString cont
 
 using T1 = typename typeToCompString<int(int,bool...) const>; // will be compString containing "int(int, bool...) const"
 
-using T1 = typename typeToCompString<int(int,bool,double...) const volatile&& noexcept>; // will be compString containing "int(int, bool, double...) const volatile&& noexcept"
+using T2 = typename typeToCompString<int(int,bool,double...) const volatile&& noexcept>; // will be compString containing "int(int, bool, double...) const volatile&& noexcept"
 
 ```
 
@@ -282,3 +295,75 @@ using T1 = typename typeToCompString<int[123]>; // will be compString containing
 
 
 ```
+
+## templated types to compString
+Note: template template types are not currently supported, their is a mechanism to get the name of a template.
+
+Due to the lack of a universal template parameter, in order to accommodate all possible templates the addition of a template to the possible conversion types is a little different than non-template types.<br>
+
+Within the namespace ::compStringNS::compStringConvNS::templatedTypeDefinitions there is a type templatedTypeToCompString<typename T>.<br>
+There are also two helper types mp_list, valueAsType, templateTemplateType.<br>
+mp_list is a type list that will contain all the parameters of the template on order.<br>
+valueAsType converts a value to type, it must be used to convert non-type template parameters into types. If a value is not wrapped into this type, it will not be recognized as a value.<br>
+templateTemplateType is a wrapper type for a template. If a template is not wrapped by this type it will not be recognized as template template parameter.<br>
+To add a template to the convertible template types, you will need to create a specialization of templatedTypeToCompString.<br>
+Each specialization of templatedTypeToCompString must have two member types: typeName and typeList, where typeName is a compString representing the template, and typeList is a mp_list of all template parameters in the form of types.<br>
+
+Lets say we have a template T<args...>, where args can be type template parameter, non-type template parameter or template template parameter.<br>
+We will have the specialization of templatedTypeToCompString:
+```cpp
+template<args...>
+Struct T{}; // template type that will be added to the convertible types
+
+namespace compStringNS::compStringConvNS::templatedTypeDefinitions{ // specialization must be in the correct namespace
+
+template<args...>
+struct templatedTypeToCompString< T<args...> >{ // specialization of templatedTypeToCompString with T
+	using typeName = decltype("T"_compStr); // the name that will be represent T
+	using typeList = mp_list<args...>; // the parameters of T in a mp_list, all non-type and template template parameters will need to be converted to types.
+};
+}
+```
+
+Example:
+```cpp
+
+template<template<typename...> typename TempT, typename A, int I, typename... Ts>
+struct myTemplatedType{}; // type to be added
+
+template<typename...>
+struct templateTemplateParameterExampleType{}; // type to show how to pass template template into the mp_list 
+
+namespace compStringNS::compStringConvNS::templatedTypeDefinitions{ // specialization must be in the correct namespace
+
+// addition of templateTemplateParameterExampleType to convertible template types
+template<typename... Ts>
+struct templatedTypeToCompString<templateTemplateParameterExampleType<Ts...>>{
+	using typeName = decltype("TTP Example Type"_compStr);
+	using typeList = mp_list<Ts...>;
+};
+
+template<template<typename...> typename TempT, typename A, int I, typename... Ts> // same template parameters as myTemplatedType
+struct templatedTypeToCompString< myTemplatedType<TempT,A,I,Ts...> >{ // specialization of templatedTypeToCompStrin
+	using typeName = decltype("myTemplatedType"_compStr);
+	using wrappedTT = templateTemplateType< TempT<void> >; // here we wrap the template template parameter with arbirtary arguments, as we need TempT as a type
+	using typeList = mp_list<wrappedTT, A, valueAsType<I>, Ts...>; // note how we took the non-type I and converted it to a type using valueAsType
+};
+}
+
+using U = typename typeToCompString<templateTemplateParameterExampleType<int,void,double>>::type;
+
+static_assert(U::sv == "TTP Example Type<int, void, double>"sv,U::sv);
+
+using T = typename typeToCompString< myTemplatedType<templateTemplateParameterExampleType,char,5,int,bool,char> >::type;
+static_assert(T::sv == "myTemplatedType<TTP Example Type, char, 5, int, bool, char>"sv,T::sv);
+
+```
+
+__NOTE:__ if the member type typeList is equal to void, the specialization of the templated type will not be acknowledged and the templated type will be interpreted as a non-template type go check if ::compStringNS::compStringConvNS::typeToCompStringDefinitions::typeToCompStringInter has the specific templated type as a specialization.<br>
+
+
+
+
+
+
