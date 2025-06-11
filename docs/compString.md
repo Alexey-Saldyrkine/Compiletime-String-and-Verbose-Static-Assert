@@ -283,6 +283,8 @@ Example:<br>
 using retStr = decltype("hello my world"_compStr)::substr<3,8>; // retStr contains "lo my"
 ```
 
+ 
+
 ### erase_if
 compString::erase_If\<typename pred> -> compString<br>
 pred is the predicate that determines wether, a character is erased.<br>
@@ -298,6 +300,7 @@ Where the paramater char is the current character being considered.<br>
 Where the paramater size_t is the index of the current character being considered.<br>
 Where bool determines wether the character is deleted.<br>
 Example:<br>
+cpp++20 required for lambda-expressions in unevaluated contexts
 ```cpp
 using pred = decltype( [](char c)->bool{
 	return c =='l';
@@ -321,6 +324,7 @@ Where the paramater char is the current character being considered.<br>
 Where the paramater size_t is the index of the current character being considered.<br>
 Where return char determines with what character the current character is replaced with.<br>
 Example:<br>
+cpp++20 required for lambda-expressions in unevaluated contexts
 ```cpp
 using replaceFunc = decltype( [](char c)->char{
 	if(c == 'l')

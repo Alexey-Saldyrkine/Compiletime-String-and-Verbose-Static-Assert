@@ -1,4 +1,6 @@
+#pragma once
 #include <string_view>
+#include <utility>
 
 
 namespace compStringNS{
@@ -359,7 +361,7 @@ struct compString<detail::tstring<c...>> {
     template<typename replaceFunc>
     using replace_if = typename replace_ifImpl<0,thisStr,replaceFunc>::type;
     template<typename str = thisStr>
-    using reverse = compStringReverse<str>::type;
+    using reverse = typename compStringReverse<str>::type;
 };
 
 template <typename T, T... chars>
