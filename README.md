@@ -87,8 +87,8 @@ This dynamic message is more helpful and useful than a static "found at least tw
 For details see docs/verbose static assert.md<br>
 
 # Requirements 
-compString requires c++20 or higher.<br>
-Verbose static assert requires c++26 for constant-expression static assert message.<br> 
+compString requires c++17 or higher.<br>
+Verbose static assert requires c++26 for non-string static assert messages.<br> 
 
 
 
