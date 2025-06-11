@@ -65,7 +65,7 @@ constexpr auto sptr  = charArrayToType<ptr,5>::type::sv;
 static_assert(sptr == "elvis"sv); // no error occurs
 ```
 
-### extending conversion to other types 
+### extending value conversion to other types 
 To extend valueToCompString conversion for a value of type T, you will need to create a template specialization of valueToCompStringInter within the namespace compStringNS::compStringConvNS.<br>
 Example:<br>
 ```cpp
