@@ -15,8 +15,8 @@ Verbose Static Assert three template parameters:<br>
 verbose_static_assert\<typename T, template\<typename> typename msgTemplate, tempalte\<typename> typename msgTranslator><br>
 
 - Where typename T is a metaprogramming function that is being asserted.<br>
-- Where msgTemplate is an incomplete templated type that serves as the instructions to create an error message based on T.<br>
-- Where msgTranslator is an incomplete templated type that will transform the template parameters for T into a verbose_static_assertNS::VSA_template_parameter_pack_data.<br>
+- Where msgTemplate is a templated type that serves as the instructions to create an error message based on T.<br>
+- Where msgTranslator is a templated type that will transform the template parameters for T into a verbose_static_assertNS::VSA_template_parameter_pack_data.<br>
 
 Requirements for the template parameters:<br>
 - typename T must have a member value, of a type that can be implicitly converted to bool, named 'value'.<br>
@@ -87,12 +87,16 @@ struct translaterT<container<T,A,Us...>>{
 The type verbose_static_assertNS:: VSA_template_parameter_pack_data provides an easy way to access the data of the template parameters.<br>
 It contains the following member types and value:<br>
 - size_t size - returns the amount of template parameters.<br>
-- bool isType\<size_t i> - return wether the parameter at pos i is a type (i.e. wether the type is not a valueAsType type).<br>
+- bool isType\<size_t i> - return wether the parameter at pos i is a type (i.e. wether the type is not a valueAsType type or a templateTemplateType type).<br>
 - bool isValue\<size_t i> - returns wether the parameter at pos i is a value (i.e. wether the type is a valueAsType type).<br>
-- typename typeAt\<size_t i> - returns the type at pos i, if the element at pos i turns out to not be a type, then an error occurs.<br>
-- auto valueAt\<size_t i> - returns the value at pos i, if the element at pos i turns out to not be a value, then an error occurs.<br>
-- typename typeStringAt\<size_t i> - returns the compString representation of typeAt<i>.<br>
-- typename valueStringAt\<size_t i> - returns the compString representation of valueAt<i>.<br> 
+- bool isTemplate\<size_t i> - returns wether the parameter at pos i is a template template parameter (i.e. wether the type is a templateTemplateType).<br>
+- typename typeAt\<size_t i> - returns the type at pos i, if the parameter at pos i turns out to not be a type, then an error occurs.<br>
+- auto valueAt\<size_t i> - returns the value at pos i, if the parameter at pos i turns out to not be a value, then an error occurs.<br>
+- typename templateAt\<size_t i> - returns the provided templated type at pos i, if the parameter at pos I turns out to not be a template template type, then an error occurs.<br>
+- typename stringAt\<size_t i> - returns the compSting of the parameter at pos I, regardless of its parameter type.<br>
+- typename typeStringAt\<size_t i> - returns the compString representation of typeAt\<i>.<br>
+- typename valueStringAt\<size_t i> - returns the compString representation of valueAt\<i>.<br> 
+- typename templateStringAt\<size_t i> - returns the compString representation of the template of templateAt\<i>.<br>
 - typename container - returns the type of T
 
 
