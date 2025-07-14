@@ -6,6 +6,7 @@
 - [Verbose static assert](#Verbose-static-assert)
 - [Requirements](#Requirements) 
 # Compile time String
+[godBolt link](https://godbolt.org/z/6s8a8cPKM)
 
 compString is a type that mimics std::string.<br>
 compString has a std::integerSequence as a template parameter to store the characters of the string.<br>
